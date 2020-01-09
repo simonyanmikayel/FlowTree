@@ -1,0 +1,20 @@
+=======================================
+Flow trace
+---------------------------------------
+0. run "Developer Command Prompt" as administrator
+1. cd c:\Program Files (x86)\Microsoft Visual Studio\2017\Community\DIA SDK\bin\amd64\
+   regsvr32 msdia140.dll
+2  not now :) cd D:\work\FlowTree\Out\Debug; regasm VsDte.dll /tlb:VsDte.tlb; gacutil /i VsDte.dll
+3. In envirnment variables Add PATH c:\common\bin
+in profiling project
+1. create Profiler config based on Debug
+2. in "properties-C/C++-command line" add /GH /Gh 
+3. "properties-Linker-Debugging-Generate Debug Info" "Generate Debug Information optimized for sharing and publishing (/DEBUG:FULL)"
+4. Add linker input for UWP     c:\common\bin\Profiler_$(Platform)_Debug.lib;
+                    for Dectop  c:\common\bin\ProfilerDesktop_$(Platform)_Debug.lib;
+5. for UWP - Add post build event: copy c:\common\bin\Profiler_$(Platform)_$(Configuration).dll $(OUTDIR)\AppX\
+6. add preprocessor definition: _PROFILER;
+7. Add in pch.h: #include "c:\common\inc\stdlog.h"
+in FlowTree
+1. set debug info:
+"aaa.exe" "\cppwinrt\"

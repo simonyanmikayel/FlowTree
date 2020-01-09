@@ -1,0 +1,2 @@
+add executable name and pid
+delete DbgInfo* m_pDbgInfo;

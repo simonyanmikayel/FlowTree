@@ -1,0 +1,65 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27004.2002
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FlowTree", "FlowTree\FlowTree.vcxproj", "{F83F6EC9-1312-4A9C-A547-0FAFCE5AA4AF}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E8E62248-994D-499A-81B7-A699F3F99D02} = {E8E62248-994D-499A-81B7-A699F3F99D02}
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Helpers", "Helpers", "{7AA64B2A-6E80-4A87-8A9D-CEFFD6C589E0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dte", "Helpers\Dte\Dte.csproj", "{E8E62248-994D-499A-81B7-A699F3F99D02}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|ARM = Debug|ARM
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|ARM = Release|ARM
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F83F6EC9-1312-4A9C-A547-0FAFCE5AA4AF}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{F83F6EC9-1312-4A9C-A547-0FAFCE5AA4AF}.Debug|ARM.ActiveCfg = Debug|Win32
+		{F83F6EC9-1312-4A9C-A547-0FAFCE5AA4AF}.Debug|x64.ActiveCfg = Debug|x64
+		{F83F6EC9-1312-4A9C-A547-0FAFCE5AA4AF}.Debug|x64.Build.0 = Debug|x64
+		{F83F6EC9-1312-4A9C-A547-0FAFCE5AA4AF}.Debug|x86.ActiveCfg = Debug|Win32
+		{F83F6EC9-1312-4A9C-A547-0FAFCE5AA4AF}.Debug|x86.Build.0 = Debug|Win32
+		{F83F6EC9-1312-4A9C-A547-0FAFCE5AA4AF}.Release|Any CPU.ActiveCfg = Release|Win32
+		{F83F6EC9-1312-4A9C-A547-0FAFCE5AA4AF}.Release|ARM.ActiveCfg = Release|Win32
+		{F83F6EC9-1312-4A9C-A547-0FAFCE5AA4AF}.Release|x64.ActiveCfg = Release|x64
+		{F83F6EC9-1312-4A9C-A547-0FAFCE5AA4AF}.Release|x64.Build.0 = Release|x64
+		{F83F6EC9-1312-4A9C-A547-0FAFCE5AA4AF}.Release|x86.ActiveCfg = Release|Win32
+		{F83F6EC9-1312-4A9C-A547-0FAFCE5AA4AF}.Release|x86.Build.0 = Release|Win32
+		{E8E62248-994D-499A-81B7-A699F3F99D02}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E8E62248-994D-499A-81B7-A699F3F99D02}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E8E62248-994D-499A-81B7-A699F3F99D02}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{E8E62248-994D-499A-81B7-A699F3F99D02}.Debug|ARM.Build.0 = Debug|Any CPU
+		{E8E62248-994D-499A-81B7-A699F3F99D02}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E8E62248-994D-499A-81B7-A699F3F99D02}.Debug|x64.Build.0 = Debug|Any CPU
+		{E8E62248-994D-499A-81B7-A699F3F99D02}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E8E62248-994D-499A-81B7-A699F3F99D02}.Debug|x86.Build.0 = Debug|Any CPU
+		{E8E62248-994D-499A-81B7-A699F3F99D02}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E8E62248-994D-499A-81B7-A699F3F99D02}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E8E62248-994D-499A-81B7-A699F3F99D02}.Release|ARM.ActiveCfg = Release|Any CPU
+		{E8E62248-994D-499A-81B7-A699F3F99D02}.Release|ARM.Build.0 = Release|Any CPU
+		{E8E62248-994D-499A-81B7-A699F3F99D02}.Release|x64.ActiveCfg = Release|Any CPU
+		{E8E62248-994D-499A-81B7-A699F3F99D02}.Release|x64.Build.0 = Release|Any CPU
+		{E8E62248-994D-499A-81B7-A699F3F99D02}.Release|x86.ActiveCfg = Release|Any CPU
+		{E8E62248-994D-499A-81B7-A699F3F99D02}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E8E62248-994D-499A-81B7-A699F3F99D02} = {7AA64B2A-6E80-4A87-8A9D-CEFFD6C589E0}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A5D7A741-D4EF-43DF-8DF4-EC80D15F0DC4}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,9 @@
+_free 1
+~ 1
+CFX_Renderer::GetSourceAlpha 1
+FPDF_GetPageSizeByIndex 0
+FPDF_GetPageSizeByIndex 1
+FPDF_LoadMemDocument 0
+pdfium::base::internal:: 1
+rasterizer_scanline_aa::sweep_scanline 0
+std:: 1

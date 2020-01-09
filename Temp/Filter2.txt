@@ -1,0 +1,6 @@
+CPDF_Page::~CPDF_Page 0 1
+CPDF_Page::ParseContent 0 1
+FPDF_GetPageSizeByIndex 1 1
+FPDF_LoadMemDocument 0 1
+FPDF_RenderPageBitmap 0 1
+std:: 1 1
