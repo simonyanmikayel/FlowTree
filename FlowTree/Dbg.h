@@ -10,9 +10,8 @@
 #define CMD_BUF_AND_SIZE(cmd) (char*)(&cmd)+1, sizeof(cmd)-1
 
 enum PROFILER_CMD { CMD_START, CMD_NEXT_MODULE, CMD_PREP_INFO, CMD_INFO_SIZE, CMD_FLOW, CMD_TRACE, CMD_LAST };
-#define LOG_ATTR_SKIP_LOG 1
-#define LOG_ATTR_SKIP_INNER 2
-#define LOG_ATTR_SKIP_ALL 4
+#define LOG_ATTR_SKIP_FUNC 1
+#define LOG_ATTR_SHOW_FUNC 2
 
 #pragma pack(push,1)
 struct Cmd
@@ -54,6 +53,7 @@ struct CmdFlow : CmdLog
 struct CmdTrace : CmdLog
 {
     CmdTrace() : CmdLog(CMD_TRACE) {}
+	int MsgType; //enum QtMsgType { QtDebugMsg, QtWarningMsg, QtCriticalMsg, QtFatalMsg, QtInfoMsg};
     int call_line;
     int cb_fn_name;
     int cb_trace;
@@ -86,7 +86,8 @@ struct DbgFuncInfo
     char* shortFnName;
     DWORD cb_shortFnName;
 	BYTE  attr;
-    DWORD  cLine;
+    DWORD  cLine = 0;
+	bool pathIncluded = true;
     DbgLineInfo* pLineInfo;
 	DWORD64 GetAddrStart() {
 		return (pLineInfo && cLine) ? pLineInfo[0].addr : 0;

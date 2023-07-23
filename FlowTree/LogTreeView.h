@@ -24,8 +24,10 @@ public:
 
   void ApplySettings(bool fontChanged);
   void Clear();
-  void RefreshTree(bool showAll);
+  void RefreshTree();
+  void RedrawAll();
   void CollapseExpandAll(LOG_NODE* pNode, bool expand);
+  void CheckAll(LOG_NODE* pNode, bool check);
 
   LRESULT OnSetFocus(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL & /*bHandled*/);
   LRESULT OnKillFocus(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL & /*bHandled*/);

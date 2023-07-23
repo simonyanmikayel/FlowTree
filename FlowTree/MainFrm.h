@@ -80,6 +80,7 @@ public:
 		COMMAND_ID_HANDLER(ID_EDIT_SELECTALL, onSelectAll)
 		MESSAGE_HANDLER(WM_INPORT_TASK, OnImportTask);
 	MESSAGE_HANDLER(WM_UPDATE_FILTER, onUpdateFilter)
+        MESSAGE_HANDLER(WM_NAVIGATE_TO_SEARCH, onNavigateToSearch)
 		MESSAGE_HANDLER(WM_SHOW_NGS, onShowMsg)
 		MESSAGE_HANDLER(WM_UPDATE_BACK_TRACE, onUpdateBackTrace)
 
@@ -93,15 +94,17 @@ public:
 		COMMAND_ID_HANDLER(ID_SEARCH_FIRST, OnSearchNavigate)
 		COMMAND_ID_HANDLER(ID_SEARCH_LAST, OnSearchNavigate)
 		COMMAND_ID_HANDLER(ID_SEARCH_REFRESH, OnSearchRefresh)
-		COMMAND_ID_HANDLER(ID_SEARCH_REFRESH_ON_EMTER, OnSearchRefreshOnEnter)
+        COMMAND_ID_HANDLER(ID_SEARCH_REFRESH_ON_EMTER, OnSearchRefresh)
 		COMMAND_ID_HANDLER(ID_SEARCH_CLEAR, OnSearchClear)
 		COMMAND_ID_HANDLER(ID_SEARCH_MATCH_CASE, OnSearchSettings)
 		COMMAND_ID_HANDLER(ID_SEARCH_MATCH_WHOLE_WORD, OnSearchSettings)
+        COMMAND_ID_HANDLER(ID_SEARCH_FILTER, OnSearchFilter)
 		COMMAND_ID_HANDLER(ID_SYNC_VIEWES, OnSyncViews)
 		COMMAND_ID_HANDLER(ID_EDIT_FIND32798, OnEditFind)
-		COMMAND_ID_HANDLER(ID_VIEW_TAKESNAPSHOT, OnTakeSnamshot);
-	COMMAND_ID_HANDLER(ID_VIEW_STARTNEWSNAPSHOT, OnStartNewSnamshot);
-
+		COMMAND_ID_HANDLER(ID_TREE_SHOW_THIS_APP, OnShowOnlyThisApp)
+		COMMAND_ID_HANDLER(ID_TREE_SHOW_THIS_THREAD, OnShowOnlyThisThread)
+		COMMAND_ID_HANDLER(ID_TREE_SHOW_ALL, OnShowAllApps)
+        MESSAGE_HANDLER(WM_NOTIFY, OnNotify)
 
 
 	CHAIN_MSG_MAP(CUpdateUI<CMainFrame>)
@@ -137,23 +140,30 @@ public:
 	LRESULT onSelectAll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnImportTask(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT onUpdateFilter(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+    LRESULT onUpdateTree(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+    LRESULT onNavigateToSearch(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT onShowMsg(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT onUpdateBackTrace(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnSyncViews(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnEditFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT OnTakeSnamshot(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT OnStartNewSnamshot(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnBookmarks(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnShowOnlyThisApp(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnShowOnlyThisThread(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnShowAllApps(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+    LRESULT OnNotify(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 
 	LRESULT OnSearchNavigate(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSearchSettings(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+    LRESULT OnSearchFilter(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSearchClear(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnSearchRefresh(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT OnSearchRefreshOnEnter(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 
 	HWND getSearchEdotBox() { return m_searchedit.m_hWnd; }
 	void UpdateStatusBar();
+    void LoadSearchList();
+    void SaveSearchList();
+    void FilterNode(WORD wID);
 private:
 	ServerThread * m_pServerThread;
 
@@ -165,11 +175,13 @@ private:
 	CComboBox           m_searchbox;
 	CEdit               m_searchedit;
 
+    void ShowSearchResult();
+    void NavigateToSearch();
 	void StartLogging();
 	void ClearLog();
 	void StopLogging();
-	void SearchRefresh(WORD wID);
-	void RefreshLog(bool showAll);
+    void SearchRefresh(bool reset);
+    void RefreshLog(bool reset);
 
 };
 

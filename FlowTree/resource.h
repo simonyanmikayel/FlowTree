@@ -24,7 +24,6 @@
 #define IDI_ICON_NODE_UNCHECKE          527
 #define IDI_ICON_EMPTY1                 528
 #define IDI_ICON_BOOKMARK               528
-#define IDD_SNAPSHOTS                   529
 #define IDI_ICON_SYNC                   529
 #define IDR_FONT1                       530
 #define IDB_TTF_BMP                     531
@@ -55,7 +54,6 @@
 #define IDC_CALL_LINE                   1020
 #define IDC_CHECK_USE_PC_TIME2          1021
 #define IDC_CHECK_COMPACT_VIEW          1022
-#define IDC_LIST_SNAPSHOTS              1023
 #define IDC_CHECK_RESOLVE_ADDR          1023
 #define IDC_FUNC_NAME                   1024
 #define IDC_CHECK_COMPACT_VIEW3         1024
@@ -65,6 +63,8 @@
 #define IDC_CHECK_FULL_SRC_PATH2        1025
 #define IDC_CHECK_FULL_FN_NAME          1025
 #define IDC_CHECK_SHOW_APP_IP           1026
+#define IDC_CHECK_FULL_FN_NAME2         1026
+#define IDC_CHECK_SHOW_IN_QT            1026
 #define IDC_NN2                         1027
 #define IDC_CHECK_SHOW_APP_IP2          1027
 #define IDC_CHECK_SHOW_ELAPSED_TIME     1027
@@ -88,6 +88,7 @@
 #define IDC_STATIC_FITER_FILE           1211
 #define IDC_STATIC_FITER_LST            1212
 #define IDC_STATIC_MODUL_LST            1213
+#define IDC_EDIT_QT_CREATOR_PATH        1213
 #define IDC_STATIC_SRC_LST              1214
 #define ID_VIEW_SHOW_HIDE_STACK         32774
 #define ID_VIEW_SHOW_HIDE_TREE          32775
@@ -111,11 +112,14 @@
 #define ID_SHOW_FUNC_IN_STUDIO          32793
 #define ID_SYNC_VIEWES                  32794
 #define ID_EDIT_SELECTALL               32795
+#define ID_TREE_CHECK_ALL               32796
+#define ID_TREE_UNCHECK_ALL             32797
 #define ID_EDIT_FIND32798               32798
 #define ID_EDIT_FINDNEXT                32801
 #define ID_EDIT_FINNDPREVIOUS           32802
 #define ID_EDIT_FINDLAST                32803
 #define ID_EDIT_FINDFIRST               32804
+#define WM_NAVIGATE_TO_SEARCH           32805
 #define ID_VIEW_UPDATE_STATUS           32806
 #define ID_TREE_COPY_INFO               32807
 #define ID_EDIT_COPY_FUNCTION_NAME      32808
@@ -131,20 +135,23 @@
 #define ID_BOOKMARKS_PREVIOUSBOOKMARK   32821
 #define ID_BOOKMARKS_CLEARBOOKMARKS     32822
 #define ID_BOOKMARKS_TOGGLE             32823
-#define ID_VIEW_TAKESNAPSHOT            32826
-#define ID_VIEW_STARTNEWSNAPSHOT        32828
+#define ID_EDIT_COPY_SPECIAL            32824
+#define ID_TREE_SHOW_ALL                32825
+#define ID_TREE_SHOW_THIS_APP           32826
+#define ID_TREE_SHOW_THIS_THREAD        32827
 #define ID_EDIT_COPY_ALL                32829
 #define ID_EDIT_COPY_TRACES             32830
 #define ID_CALL_STACK                   32831
 #define ID_VIEW_DBG_SETTINGS            32833
+#define ID_SEARCH_FILTER                32834
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        540
-#define _APS_NEXT_COMMAND_VALUE         32834
-#define _APS_NEXT_CONTROL_VALUE         1213
+#define _APS_NEXT_COMMAND_VALUE         32835
+#define _APS_NEXT_CONTROL_VALUE         1214
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -6,107 +6,113 @@
 #include "DlgProgress.h"
 #include "MainFrm.h"
 
-enum STATE_IMAGE{ STATE_IMAGE_COLAPSED, STATE_IMAGE_EXPANDED, STATE_IMAGE_CHECKED, STATE_IMAGE_UNCHECKE };
+enum STATE_IMAGE { STATE_IMAGE_COLAPSED, STATE_IMAGE_EXPANDED, STATE_IMAGE_CHECKED, STATE_IMAGE_UNCHECKE };
 static const int min_colWidth = 16;
 
 CLogTreeView::CLogTreeView(CFlowTraceView* pView)
-  : m_pView(pView)
-  , m_recCount(0)
-  , m_pSelectedNode(0)
-  , m_rowHeight(1)
+    : m_pView(pView)
+    , m_recCount(0)
+    , m_pSelectedNode(0)
+    , m_rowHeight(1)
 {
-  m_hTypeImageList = ImageList_Create(16, 16, ILC_MASK, 1, 0);
-  ImageList_AddIcon(m_hTypeImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_TREE_ROOT))); //0
-  ImageList_AddIcon(m_hTypeImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_TREE_APP))); //1
-  ImageList_AddIcon(m_hTypeImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_TREE_THREAD))); //2
-  ImageList_AddIcon(m_hTypeImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_TREE_PAIRED))); //3
-  ImageList_AddIcon(m_hTypeImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_TREE_ENTER))); //4
-  ImageList_AddIcon(m_hTypeImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_TREE_EXIT))); //5  
+    m_hTypeImageList = ImageList_Create(16, 16, ILC_MASK, 1, 0);
+    ImageList_AddIcon(m_hTypeImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_TREE_ROOT))); //0
+    ImageList_AddIcon(m_hTypeImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_TREE_APP))); //1
+    ImageList_AddIcon(m_hTypeImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_TREE_THREAD))); //2
+    ImageList_AddIcon(m_hTypeImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_TREE_PAIRED))); //3
+    ImageList_AddIcon(m_hTypeImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_TREE_ENTER))); //4
+    ImageList_AddIcon(m_hTypeImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_TREE_EXIT))); //5  
 
-  m_colWidth = min_colWidth;
-  m_Initialised = false;
-  m_hdc = CreateCompatibleDC(NULL);// CreateIC(TEXT("DISPLAY"), NULL, NULL, NULL);
+    m_colWidth = min_colWidth;
+    m_Initialised = false;
+    m_hdc = CreateCompatibleDC(NULL);// CreateIC(TEXT("DISPLAY"), NULL, NULL, NULL);
 
-  LOGBRUSH LogBrush;
-  LogBrush.lbColor = RGB(0, 0, 0);
-  LogBrush.lbStyle = PS_SOLID;
-  hDotPen = ExtCreatePen(PS_COSMETIC | PS_ALTERNATE, 1, &LogBrush, 0, NULL);  
+    LOGBRUSH LogBrush;
+    LogBrush.lbColor = RGB(0, 0, 0);
+    LogBrush.lbStyle = PS_SOLID;
+    hDotPen = ExtCreatePen(PS_COSMETIC | PS_ALTERNATE, 1, &LogBrush, 0, NULL);
 
-  m_hStateImageList = ImageList_Create(16, 16, ILC_MASK, 1, 0);
-  ImageList_AddIcon(m_hStateImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_NODE_COLAPSED))); //0 STATE_IMAGE_COLAPSED
-  ImageList_AddIcon(m_hStateImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_NODE_EXPANDED))); //1 STATE_IMAGE_EXPANDED
-  ImageList_AddIcon(m_hStateImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_NODE_CHECKED))); //2 STATE_IMAGE_CHECKED
-  ImageList_AddIcon(m_hStateImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_NODE_UNCHECKE))); //3 STATE_IMAGE_UNCHECKE
+    m_hStateImageList = ImageList_Create(16, 16, ILC_MASK, 1, 0);
+    ImageList_AddIcon(m_hStateImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_NODE_COLAPSED))); //0 STATE_IMAGE_COLAPSED
+    ImageList_AddIcon(m_hStateImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_NODE_EXPANDED))); //1 STATE_IMAGE_EXPANDED
+    ImageList_AddIcon(m_hStateImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_NODE_CHECKED))); //2 STATE_IMAGE_CHECKED
+    ImageList_AddIcon(m_hStateImageList, LoadIcon(_Module.get_m_hInst(), MAKEINTRESOURCE(IDI_ICON_NODE_UNCHECKE))); //3 STATE_IMAGE_UNCHECKE
 }
 
 
 CLogTreeView::~CLogTreeView()
 {
-  DeleteDC(m_hdc); 
+    DeleteDC(m_hdc);
 }
 
 void CLogTreeView::ApplySettings(bool fontChanged)
 {
-  if (fontChanged)
-  {
-    SetFont(gSettings.GetFont());
-    SelectObject(m_hdc, gSettings.GetFont());
-  }
-  Invalidate();
+    if (fontChanged)
+    {
+        SetFont(gSettings.Font());
+        SelectObject(m_hdc, gSettings.Font());
+    }
+    Invalidate();
 }
 
 void CLogTreeView::Clear()
 {
-  m_recCount = 0;
-  m_pSelectedNode = NULL;
-  SetItemCountEx(0, 0);
-  m_colWidth = min_colWidth;
-  SetColumnWidth(0, m_colWidth);
-  gMainFrame->UpdateStatusBar();
+    m_recCount = 0;
+    m_pSelectedNode = NULL;
+    SetItemCountEx(0, 0);
+    m_colWidth = min_colWidth;
+    SetColumnWidth(0, m_colWidth);
+    Helpers::UpdateStatusBar();
 }
 
 LRESULT CLogTreeView::OnRButtonDown(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL & bHandled)
 {
-  bHandled = TRUE;
+    bHandled = TRUE;
 
-  if (GetFocus() != *this)
-    SetFocus();
+    if (GetFocus() != *this)
+        SetFocus();
 
-  int xPos = GET_X_LPARAM(lParam);
-  int yPos = GET_Y_LPARAM(lParam);
+    int xPos = GET_X_LPARAM(lParam);
+    int yPos = GET_Y_LPARAM(lParam);
 
-  LOG_NODE* pNode = NULL;
-  int iItem = ItemByPos(yPos);
-  if (iItem >= 0)
-  {
-    pNode = getTreeNode(iItem);
-  }
-
-  if (pNode)
-  {
-    if (m_pSelectedNode != pNode)
+    LOG_NODE* pNode = NULL;
+    int iItem = ItemByPos(yPos);
+    if (iItem >= 0)
     {
-      if (m_pSelectedNode != NULL)
-      {
-        int iCurSelected = m_pSelectedNode->GetPosInTree();
-        RedrawItems(iCurSelected, iCurSelected);
-      }
-      SetSelectedNode(pNode);
-      RedrawItems(iItem, iItem);
-      EnsureItemVisible(iItem);
+        pNode = getTreeNode(iItem);
     }
 
-    bool disable;
-    int cMenu = 0;
-    POINT pt = { xPos, yPos };
-    ClientToScreen(&pt);
-    HMENU hMenu = CreatePopupMenu();
-    Helpers::AddCommonMenu(pNode, hMenu, cMenu);
+    if (pNode)
+    {
+        if (m_pSelectedNode != pNode)
+        {
+            if (m_pSelectedNode != NULL)
+            {
+                int iCurSelected = m_pSelectedNode->GetPosInTree();
+                RedrawItems(iCurSelected, iCurSelected);
+            }
+            SetSelectedNode(pNode);
+            RedrawItems(iItem, iItem);
+            EnsureItemVisible(iItem);
+        }
 
-    Helpers::AddMenu(hMenu, cMenu, ID_TREE_COLLAPSE_ALL, _T("Collapse All"));
+        bool disable;
+        int cMenu = 0;
+        POINT pt = { xPos, yPos };
+        ClientToScreen(&pt);
+        HMENU hMenu = CreatePopupMenu();
+        Helpers::AddCommonMenu(pNode, hMenu, cMenu);
 
-    disable = (!pNode->lastChild);
-    Helpers::AddMenu(hMenu, cMenu, ID_TREE_EXPAND_ALL, _T("Expand All"), disable);
+        Helpers::AddMenu(hMenu, cMenu, ID_TREE_COLLAPSE_ALL, _T("Collapse All"));
+
+        disable = (!pNode->lastChild);
+        Helpers::AddMenu(hMenu, cMenu, ID_TREE_EXPAND_ALL, _T("Expand All"), disable);
+
+    disable = (pNode->data_type != ROOT_DATA_TYPE && pNode->data_type != APP_DATA_TYPE);
+    Helpers::AddMenu(hMenu, cMenu, ID_TREE_CHECK_ALL, _T("Show All Children"), disable);
+    Helpers::AddMenu(hMenu, cMenu, ID_TREE_UNCHECK_ALL, _T("Hide All Children"), disable);
+
+    InsertMenu(hMenu, cMenu++, MF_BYPOSITION | MF_SEPARATOR, 0, _T(""));
 
     disable = (!pNode->isFlow());
     Helpers::AddMenu(hMenu, cMenu, ID_TREE_COPY_INFO, _T("&Copy function info"), disable);
@@ -115,6 +121,12 @@ LRESULT CLogTreeView::OnRButtonDown(UINT uMsg, WPARAM wParam, LPARAM lParam, BOO
     Helpers::AddMenu(hMenu, cMenu, ID_EDIT_COPY_FUNCTION_NAME, _T("&Copy function name"), disable);
 
     Helpers::AddMenu(hMenu, cMenu, ID_EDIT_COPY, _T("&Copy\tCtrl+C"));
+
+    InsertMenu(hMenu, cMenu++, MF_BYPOSITION | MF_SEPARATOR, 0, _T(""));
+
+    Helpers::AddMenu(hMenu, cMenu, ID_TREE_SHOW_ALL, _T("Show All\tCtrl+L"), false);
+    Helpers::AddMenu(hMenu, cMenu, ID_TREE_SHOW_THIS_APP, _T("Show only this app\tCtrl+P"), false);
+    Helpers::AddMenu(hMenu, cMenu, ID_TREE_SHOW_THIS_THREAD, _T("Show only this thread\tCtrl+D"), false);
 
     UINT nRet = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_TOPALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, m_hWnd, 0);
     DestroyMenu(hMenu);
@@ -126,6 +138,26 @@ LRESULT CLogTreeView::OnRButtonDown(UINT uMsg, WPARAM wParam, LPARAM lParam, BOO
     else if (nRet == ID_TREE_COLLAPSE_ALL)
     {
       CollapseExpandAll(pNode, false);
+    }
+    else if (nRet == ID_TREE_CHECK_ALL)
+    {
+        CheckAll(pNode, true);
+    }
+    else if (nRet == ID_TREE_UNCHECK_ALL)
+    {
+        CheckAll(pNode, false);
+    }
+    else if (nRet == ID_TREE_SHOW_THIS_THREAD)
+    {
+        ::SendMessage(hwndMain, WM_COMMAND, nRet, 0);
+    }
+    else if (nRet == ID_TREE_SHOW_THIS_APP)
+    {
+        ::SendMessage(hwndMain, WM_COMMAND, nRet, 0);
+    }
+    else if (nRet == ID_TREE_SHOW_ALL)
+    {
+        ::SendMessage(hwndMain, WM_COMMAND, nRet, 0);
     }
     else if (nRet == ID_EDIT_COPY)
     {
@@ -165,6 +197,15 @@ void CLogTreeView::CollapseExpandAll(LOG_NODE* pNode, bool expand)
   RedrawItems(0, gArchive.getRootNode()->GetExpandCount());
 }
 
+void CLogTreeView::CheckAll(LOG_NODE* pNode, bool check)
+{
+    if (pNode->CheckAll(check))
+    {
+        ::PostMessage(hwndMain, WM_UPDATE_FILTER, 0, 0);
+        RedrawItems(0, gArchive.getRootNode()->GetExpandCount());
+    }
+}
+
 void CLogTreeView::CopySelection()
 {
   if (!m_pSelectedNode)
@@ -175,7 +216,12 @@ void CLogTreeView::CopySelection()
   Helpers::CopyToClipboard(m_hWnd, szText, cbText);
 }
 
-void CLogTreeView::RefreshTree(bool showAll)
+void CLogTreeView::RedrawAll()
+{
+    RedrawItems(0, gArchive.getRootNode()->GetExpandCount());
+}
+
+void CLogTreeView::RefreshTree()
 {
   DWORD newCount = gArchive.getCount();
   if (newCount <= 1)
@@ -598,7 +644,7 @@ LRESULT CLogTreeView::OnLButtonDown(UINT uMsg, WPARAM wParam, LPARAM lParam, BOO
     else if (hitTest(pNode, xPos, offset) == TVHT_ONITEMSTATEICON)
     {
       pNode->checked = !pNode->checked;
-      ::PostMessage(hwndMain, WM_UPDATE_FILTER, 0, (LPARAM)pNode);
+      ::PostMessage(hwndMain, WM_UPDATE_FILTER, 0, 0);
     }
 
     if (m_pSelectedNode != NULL)
@@ -746,10 +792,10 @@ void CLogTreeView::DrawSubItem(int iItem, int iSubItem, HDC hdc, RECT rcItem)
   RECT rcFrame = rcItem;
   rcFrame.left = left - 2;
   rcFrame.right = rcFrame.left + cxText + 4;
-  if (m_pView->selectedNode() == pNode)
+    if (gSyncronizedNode == pNode)
   {
     CBrush brush1;
-    brush1.CreateSolidBrush(RGB(0, 255, 128)); //gSettings.GetSyncColor()
+    brush1.CreateSolidBrush(RGB(0, 255, 128)); //gSettings.SyncColor()
     FillRect(hdc, &rcFrame, brush1);
 
     ::SetBkMode(hdc, TRANSPARENT);

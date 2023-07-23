@@ -4,6 +4,7 @@
 #include "LogData.h"
 
 #define MAX_TRCAE_LEN (1024*2)
+#define MAX_LOG_LEN MAX_TRCAE_LEN
 #define MAX_RECORD_LEN (MAX_TRCAE_LEN + 2 * sizeof(ROW_LOG_REC))
 struct ListedNodes;
 
@@ -13,19 +14,28 @@ const size_t MAX_BUF_SIZE = 12LL * 1024 * 1024 * 1024;
 const size_t MAX_BUF_SIZE = 1024 * 1024 * 1024;
 #endif
 
-struct SNAPSHOT_INFO
-{
-    int pos;
-    CHAR descr[32];
-};
-
-struct SNAPSHOT
-{
-    void clear() { curSnapShot = 0;  snapShots.clear(); update(); }
-    void update();
-    int curSnapShot;
-    std::vector<SNAPSHOT_INFO> snapShots;
-    DWORD first, last;
+struct NODE_FILTER {
+	NODE_FILTER() { 
+		reset(); 
+	}
+	void reset() { 
+		tid = pid = undefined; 
+	}
+	void setTid(int i) { 
+		tid = i; pid = undefined; 
+	}
+	void setPid(int i) { 
+		pid = i; tid = undefined; 
+	}
+	bool isUndefined() { 
+		return pid == undefined && tid == undefined; 
+	}
+	bool isTid(int i) { return tid == i; }
+	bool isPid(int i) { return pid == i; }
+private:
+	int pid;
+	int tid;
+	static constexpr int undefined = -11111;
 };
 
 class Archive
@@ -36,19 +46,22 @@ public:
 
     void clearArchive(); 
 	void onPaused();
-    DWORD getCount();
-    LOG_NODE* getNode(DWORD i) { return (m_pNodes && i < m_pNodes->Count()) ? (LOG_NODE*)m_pNodes->Get(i) : 0; }
+    inline DWORD getCount();
+	void lock() { EnterCriticalSection(&cs); }
+	void unlock() { LeaveCriticalSection(&cs); }
+	LOG_NODE* getNode(DWORD i) { return (m_pNodes && i < m_pNodes->Count()) ? (LOG_NODE*)m_pNodes->Get(i) : 0; }
     char* Alloc(DWORD cb) { return (char*)m_pTraceBuf->Alloc(cb, false); }
-    bool append(DWORD pid, CmdLog* pLog);
+	LOG_NODE* append(DWORD pid, CmdLog* pLog);
 	void RegisterApp(DbgInfo* pDbgInfo);
     bool IsEmpty() { return m_pNodes ==nullptr || m_pNodes->Count() == 0; }
     DWORD64 index(LOG_NODE* pNode) { return pNode - getNode(0); }
     ListedNodes* getListedNodes() { return m_listedNodes; }
     ROOT_NODE* getRootNode() { return m_rootNode; }
-    SNAPSHOT& getSNAPSHOT() { return m_snapshot; }
     static DWORD getArchiveNumber() { return archiveNumber; }
     size_t UsedMemory();
 	DWORD TickCount() { return tickCount; }
+    BYTE getNewBookmarkNumber() { return ++bookmarkNumber; }
+    BYTE resteBookmarkNumber() { return bookmarkNumber = 0; }
 
 private:
 	inline APP_NODE* getApp(DWORD Pid);
@@ -63,50 +76,56 @@ private:
     static DWORD archiveNumber;
 	APP_NODE* curApp;
 	THREAD_NODE* curThread;
-    SNAPSHOT m_snapshot;
     ListedNodes* m_listedNodes;
     ROOT_NODE* m_rootNode;
     MemBuf* m_pTraceBuf;
     PtrArray<LOG_NODE>* m_pNodes;
 	CRITICAL_SECTION cs;
+    BYTE bookmarkNumber = 0;
 };
 
 struct ListedNodes
 {
-    ListedNodes() {
-        ZeroMemory(this, sizeof(*this));
-        m_pListBuf = new MemBuf(MAX_BUF_SIZE, 64 * 1024 * 1024);
-    }
-    ~ListedNodes() {
-        delete m_pNodes;
-        delete m_pListBuf;
-    }
-    LOG_NODE* getNode(DWORD i) {
-        return m_pNodes->Get(i);
-    }
-    void Free()
-    {
-        m_pListBuf->Free();
-        delete m_pNodes;
-        archiveCount = 0;
-        m_pNodes = new PtrArray<LOG_NODE>(m_pListBuf);
-    }
-    size_t UsedMemory() {
-        return m_pListBuf->UsedMemory();
-    }
-    void addNode(LOG_NODE* pNode, BOOL flowTraceHiden) {
-        DWORD64 ndx = gArchive.index(pNode);
-        if (ndx >= gArchive.getSNAPSHOT().first && ndx <= gArchive.getSNAPSHOT().last && pNode->isInfo() && !pNode->threadNode->pAppNode->isHiden() && !pNode->threadNode->isHiden() && (pNode->isTrace() || !flowTraceHiden))
-        {
-            m_pNodes->AddPtr(pNode);
-        }
-    }
-    DWORD Count() { return m_pNodes->Count(); }
-    void applyFilter(BOOL flowTraceHiden);
-    void updateList(BOOL flowTraceHiden);
+	ListedNodes() {
+		ZeroMemory(this, sizeof(*this));
+		m_pListBuf = new MemBuf(MAX_BUF_SIZE, 64 * 1024 * 1024);
+	}
+	~ListedNodes() {
+		delete m_pListNodes;
+		delete m_pListBuf;
+	}
+	LOG_NODE* getNode(DWORD i) {
+		return m_pListNodes->Get(i);
+	}
+	void FreeListedNodes()
+	{
+		m_pListBuf->Free();
+		delete m_pListNodes;
+		archiveCount = 0;
+		m_pListNodes = new PtrArray<LOG_NODE>(m_pListBuf);
+	}
+	size_t AllocMemory() {
+		return m_pListBuf->AllocMemory();
+	}
+	size_t UsedMemory() {
+		return m_pListBuf->UsedMemory();
+	}
+	DWORD Count() { return m_pListNodes->Count(); }
+	void updateList(bool reset, bool flowTraceHiden, bool searchFilterOn);
+	static bool isVisibleLog(LOG_NODE* pNode, bool flowTraceHiden) {
+		return pNode->threadNode && pNode->isInfo() && !pNode->threadNode->isHiden()
+			&& (pNode->isTrace() || !flowTraceHiden);
+	}
 private:
-    DWORD archiveCount;
-    PtrArray<LOG_NODE>* m_pNodes;
-    MemBuf* m_pListBuf;
+	void addNode(LOG_NODE* pNode, bool flowTraceHiden, bool searchFilterOn) {
+		//DWORD64 ndx = gArchive.index(pNode);
+		if (isVisibleLog(pNode, flowTraceHiden) && (pNode->lineSearchPos || !searchFilterOn))
+		{
+			m_pListNodes->AddPtr(pNode);
+		}
+	}
+	DWORD archiveCount;
+	PtrArray<LOG_NODE>* m_pListNodes;
+	MemBuf* m_pListBuf;
 };
 

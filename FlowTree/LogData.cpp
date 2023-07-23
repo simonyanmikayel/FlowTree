@@ -22,7 +22,7 @@ DWORD FLOW_NODE::cbFnName(bool forceFullName)
 	DbgFuncInfo* p = GetFuncInfo();
 	if (!p)
 		return 0;
-	else if (forceFullName || gSettings.GetFullFnName())
+	else if (forceFullName || gSettings.FullFnName())
 		return p->cb_fnName;
 	else
 		return p->cb_shortFnName;
@@ -32,7 +32,7 @@ char* FLOW_NODE::fnName(bool forceFullName)
 	DbgFuncInfo* p = GetFuncInfo();
 	if (!p)
 		return "?";
-	else if (forceFullName || gSettings.GetFullFnName())
+	else if (forceFullName || gSettings.FullFnName())
 		return p->fnName;
 	else
 		return p->shortFnName;
@@ -52,7 +52,7 @@ void FLOW_NODE::CopyFuncInfo()
 	cb += _sntprintf_s(pBuf + cb, cMaxBuf - cb, cMaxBuf - cb, TEXT("callAddr: \t\t%llu\n"), callAddr);
 
 	DbgFuncInfo* p = GetFuncInfo();
-	if (p)
+	if (0 && p)
 	{
 		cb += _sntprintf_s(pBuf + cb, cMaxBuf - cb, cMaxBuf - cb, TEXT("fnName: \t\t%s\n"), p->fnName);
 		cb += _sntprintf_s(pBuf + cb, cMaxBuf - cb, cMaxBuf - cb, TEXT("shortFnName: \t%s\n"), p->shortFnName);
@@ -159,9 +159,11 @@ void FLOW_NODE::addToTree()
 				if (lastFlowNode->peer == NULL && lastFlowNode->isEnter() && lastFlowNode->funcId == funcId)
 				{
 					lastFlowNode->peer = this;
-					peer = threadNode->curentFlow;
-					if (threadNode->curentFlow->parent != threadNode) {
-						threadNode->curentFlow = (FLOW_NODE*)(threadNode->curentFlow->parent);
+                    peer = lastFlowNode;
+                    if (lastFlowNode->callAddr == 0)
+                        lastFlowNode->callAddr = this->callAddr;
+                    if (lastFlowNode->parent != threadNode) {
+						threadNode->curentFlow = (FLOW_NODE*)(lastFlowNode->parent);
 					}
 					break;
 				}
@@ -208,7 +210,7 @@ int LOG_NODE::getTreeImage()
     }
 }
 
-LOG_NODE* LOG_NODE::getSyncNode()
+FLOW_NODE* LOG_NODE::getSyncNode()
 {
     LOG_NODE* pNode = this;
     while (pNode && !pNode->isTreeNode() && (pNode->getPeer() || pNode->parent))
@@ -223,11 +225,10 @@ LOG_NODE* LOG_NODE::getSyncNode()
             pNode = pNode->parent;
         }
     }
-    if (pNode && !pNode->isTreeNode())
-    {
-        pNode = NULL;
-    }
-    return pNode;
+    if (pNode && pNode->isFlow() || pNode->isThread())
+        return (FLOW_NODE*)pNode;
+    else
+        return NULL;
 }
 
 CHAR* LOG_NODE::getTreeText(int* cBuf, bool extened)
@@ -248,12 +249,12 @@ CHAR* LOG_NODE::getTreeText(int* cBuf, bool extened)
 	{
 		APP_NODE* This = (APP_NODE*)this;
 		cb += _sntprintf_s(pBuf + cb, cMaxBuf -cb , cMaxBuf - cb, This->appName);
-		if (gSettings.GetColPID())
+		if (gSettings.ColPID())
 			cb += _sntprintf_s(pBuf + cb, cMaxBuf -cb , cMaxBuf - cb, TEXT("[%d]"), getPid());
 	}
 	else if (isThread())
     {
-		if (gSettings.GetColPID())
+		if (gSettings.ColPID())
 			cb += _sntprintf_s(pBuf + cb, cMaxBuf -cb , cMaxBuf - cb, TEXT("[%d-%d]"), getThreadNN(), getPid());
 		else
 			cb += _sntprintf_s(pBuf + cb, cMaxBuf -cb , cMaxBuf - cb, TEXT("[%d]"), getThreadNN());
@@ -269,9 +270,9 @@ CHAR* LOG_NODE::getTreeText(int* cBuf, bool extened)
         cb += cb_name;
         if (extened)
         {
-            if (gSettings.GetColNN() && NN)
+            if (gSettings.ColNN() && NN)
                 cb += _sntprintf_s(pBuf + cb, cMaxBuf -cb , cMaxBuf - cb, TEXT(" (%d)"), NN); //gArchive.index(this) NN
-            if (gSettings.GetShowElapsedTime() && This->getPeer())
+            if (gSettings.ShowElapsedTime() && This->getPeer())
             {
                 _int64 sec1 = This->getTimeSec();
                 _int64 msec1 = This->getTimeMSec();
@@ -283,11 +284,11 @@ CHAR* LOG_NODE::getTreeText(int* cBuf, bool extened)
 			cb += _sntprintf_s(pBuf + cb, cMaxBuf -cb , cMaxBuf - cb, TEXT(" (%d)"), cChild); //gArchive.index(this) NN
 #endif
 		}
-        if (gSettings.GetColCallAddr())
+        if (gSettings.ColCallAddr())
         {
             cb += _sntprintf_s(pBuf + cb, cMaxBuf -cb , cMaxBuf - cb, TEXT(" (%llu)"), This->callAddr);
         }
-        if (gSettings.GetFnCallLine())
+        if (gSettings.FnCallLine())
         {
 			cb += _sntprintf_s(pBuf + cb, cMaxBuf -cb , cMaxBuf - cb, TEXT(" (%d)"), This->GetCallLine());
         }
@@ -306,9 +307,9 @@ CHAR* LOG_NODE::getTreeText(int* cBuf, bool extened)
 }
 
 
-CHAR* LOG_NODE::getListText(int *cBuf, LIST_COL col, int iItem)
+CHAR* LOG_NODE::getListText(int* cBuf, LIST_COL col)
 {
-    const int MAX_BUF_LEN = 2 * MAX_TRCAE_LEN - 1;
+    const int MAX_BUF_LEN = 2 * MAX_LOG_LEN - 1;
     static CHAR pBuf[MAX_BUF_LEN + 1];
     int& cb = *cBuf;
     CHAR* ret = pBuf;
@@ -316,27 +317,24 @@ CHAR* LOG_NODE::getListText(int *cBuf, LIST_COL col, int iItem)
     cb = 0;
     pBuf[0] = 0;
 
-    if (col == LINE_NN_COL)
-    {
-        cb += _sntprintf_s(pBuf, MAX_BUF_LEN, MAX_BUF_LEN, TEXT("%d"), iItem);
-    }
-    else if (col == NN_COL)
+    if (col == NN_COL)
     {
         int NN = getNN(); // gArchive.index(this); // getNN();
         if (NN)
             cb += _sntprintf_s(pBuf, MAX_BUF_LEN, MAX_BUF_LEN, TEXT("%d"), NN);
+        int prev_NN = prevSibling ? prevSibling->getNN() : 0;
     }
-	else if (col == APP_COLL)
-	{
-		cb += _sntprintf_s(pBuf, MAX_BUF_LEN, MAX_BUF_LEN, TEXT("%s"), threadNode->pAppNode->appName);
-	}
-	else if (col == THREAD_COL)
+    else if (col == APP_COLL)
     {
-		if (gSettings.GetColPID())
-			cb += _sntprintf_s(pBuf, MAX_BUF_LEN, MAX_BUF_LEN, TEXT("[%d-%d]"), getThreadNN(), getPid());
-		else
-			cb += _sntprintf_s(pBuf, MAX_BUF_LEN, MAX_BUF_LEN, TEXT("[%d]"), getThreadNN());
-	}
+        cb += _sntprintf_s(pBuf, MAX_BUF_LEN, MAX_BUF_LEN, TEXT("%s"), threadNode->pAppNode->appName);
+    }
+    else if (col == PID_COL)
+    {
+        if (gSettings.ColPID())
+            cb += _sntprintf_s(pBuf, MAX_BUF_LEN, MAX_BUF_LEN, TEXT("[%d-%d]"), getThreadNN(), getPid());
+        else
+            cb += _sntprintf_s(pBuf, MAX_BUF_LEN, MAX_BUF_LEN, TEXT("[%d]"), getThreadNN());
+    }
     else if (col == TIME_COL)
     {
         if (isInfo())
@@ -369,7 +367,7 @@ CHAR* LOG_NODE::getListText(int *cBuf, LIST_COL col, int iItem)
         else if (isFlow())
         {
             FLOW_NODE* This = (FLOW_NODE*)this;
-			cb += This->getFnNameSize();
+            cb += This->getFnNameSize();
             memcpy(pBuf, This->getFnName(), cb);
             pBuf[cb] = 0;
         }
@@ -377,16 +375,15 @@ CHAR* LOG_NODE::getListText(int *cBuf, LIST_COL col, int iItem)
     else if (col == CALL_LINE_COL)
     {
         cb += _sntprintf_s(pBuf + cb, MAX_BUF_LEN - cb, MAX_BUF_LEN - cb, TEXT("%d"), getCallLine());
-		if (isFlow())
-			cb += _sntprintf_s(pBuf + cb, MAX_BUF_LEN - cb, MAX_BUF_LEN - cb, TEXT(" %d"), ((FLOW_NODE*)this)->GetFuncLine());
-		
+        if (isFlow())
+            cb += _sntprintf_s(pBuf + cb, MAX_BUF_LEN - cb, MAX_BUF_LEN - cb, TEXT(" %d"), ((FLOW_NODE*)this)->GetFuncLine());
     }
     else if (col == LOG_COL)
     {
         if (isFlow())
         {
             FLOW_NODE* This = (FLOW_NODE*)this;
-			cb += This->getFnNameSize();
+            cb += This->getFnNameSize();
             memcpy(pBuf, This->getFnName(), cb);
             pBuf[cb] = 0;
         }
@@ -422,9 +419,9 @@ CHAR* LOG_NODE::getListText(int *cBuf, LIST_COL col, int iItem)
         }
     }
 
-	if (cb > MAX_BUF_LEN)
-		cb = MAX_BUF_LEN;
-	pBuf[cb] = 0;
+    if (cb > MAX_BUF_LEN)
+        cb = MAX_BUF_LEN;
+    pBuf[cb] = 0;
     return ret;
 }
 
@@ -442,16 +439,16 @@ LONG LOG_NODE::getTimeMSec()
 }
 int LOG_NODE::getPid()
 {
-	if (isThread())
-		return ((THREAD_NODE*)this)->tid;
-	else if (isApp())
-		return ((APP_NODE*)this)->pDbgInfo->Pid;
+    if (isApp())
+        return ((APP_NODE*)this)->pDbgInfo->Pid;
+    else if (threadNode)
+        return threadNode->tid;
 	else
 		return 0;
 }
 int LOG_NODE::getThreadNN()
 {
-	return  isThread() ? ((THREAD_NODE*)this)->threadNN : (isInfo() ? threadNode->threadNN : 0);
+	return  threadNode ? threadNode->threadNN : 0;
 }
 DWORD64 LOG_NODE::getCallAddr()
 {
@@ -627,4 +624,59 @@ DbgFuncInfo* APP_NODE::GetFuncInfoByAddr(DWORD64 addr)
 	return p->Get(funcId);
 }
 
+//return true if check changed
+bool LOG_NODE::CheckAll(bool check, bool recursive)
+{
+    bool checkChanged = false;
+    checkChanged = CheckNode(check) || checkChanged;
+    LOG_NODE* pNode = firstChild;
+    while (pNode && pNode->hasCheckBox)
+    {
+        checkChanged = pNode->CheckNode(check) || checkChanged;
+        if (recursive)
+            checkChanged = pNode->CheckAll(check, recursive) || checkChanged;
+        pNode = pNode->nextSibling;
+    }
+    return checkChanged;
+}
+
+bool LOG_NODE::ShowOnlyThis()
+{
+    bool checkChanged = false;
+    checkChanged = getRoot()->CheckAll(false) || checkChanged;
+    if (isRoot())
+    {
+        checkChanged = CheckAll(true, true) || checkChanged;
+    }
+    else if (isApp())
+    {
+        checkChanged = CheckAll(true) || checkChanged;
+    }
+    else if (isThread())
+    {
+        checkChanged = getApp()->CheckAll(false) || checkChanged;
+        checkChanged = getApp()->CheckNode(true) || checkChanged;
+        checkChanged = getTrhread()->CheckNode(true) || checkChanged;
+    }
+    else
+    {
+        ATLASSERT(FALSE);
+    }
+    return checkChanged;
+}
+
+bool LOG_NODE::CheckNode(bool check)
+{
+    bool checkChanged = false;
+    if (hasCheckBox)
+    {
+        if (checked != check)
+            checkChanged = true;
+        checked = check ? 1 : 0;
+    }
+    return checkChanged;
+}
+
 APP_NODE* LOG_NODE::getApp() { return threadNode->pAppNode; }
+THREAD_NODE* LOG_NODE::getTrhread() { return threadNode; }
+ROOT_NODE* LOG_NODE::getRoot() { return (ROOT_NODE*)getApp()->parent; }

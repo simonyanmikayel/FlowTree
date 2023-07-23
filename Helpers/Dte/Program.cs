@@ -21,7 +21,7 @@ namespace Dte
         const int SW_HIDE = 0;
         const int SW_SHOW = 5;
 
-        static public EnvDTE80.DTE2 dte2;
+        static public EnvDTE80.DTE2 dte2 = null;
         static void Main(string[] args)
         {
             var handle = GetConsoleWindow();
@@ -32,7 +32,8 @@ namespace Dte
                 {
                     args[0] = args[0].Replace('*', ' ');
                     //MessageBox.Show(String.Format("Openinig {0}", args[0]), "VS", MessageBoxButtons.OK);
-                    dte2 = (EnvDTE80.DTE2)System.Runtime.InteropServices.Marshal.GetActiveObject("VisualStudio.DTE.16.0");
+                    getDte();
+                    //dte2 = (EnvDTE80.DTE2)System.Runtime.InteropServices.Marshal.GetActiveObject("VisualStudio.DTE.16.0");
                     Window window = dte2.ItemOperations.OpenFile(args[0]);
                     if (window != null)
                     {
@@ -78,6 +79,22 @@ namespace Dte
             }
 
 
+        }
+
+        static void getDte()
+        {
+            for (int i = 25; i > 8; i--)
+            {
+                try
+                {
+                    dte2 = (EnvDTE80.DTE2)System.Runtime.InteropServices.Marshal.GetActiveObject("VisualStudio.DTE." + i.ToString() + ".0");
+                    break;
+                }
+                catch (Exception)
+                {
+                    //don't care... just keep bashing head against wall until success
+                }
+            }
         }
     }
 }

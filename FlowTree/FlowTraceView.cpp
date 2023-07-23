@@ -8,11 +8,13 @@
 #include "Helpers.h"
 #include "FlowTraceView.h"
 
+FLOW_NODE*  gSyncronizedNode = NULL;
+
 CFlowTraceView::CFlowTraceView()
-	: m_wndListView(this)
+	: m_wndListFrame(this)
 	, m_wndTreeView(this)
 	, m_wndBackTraceView(this)
-	, m_selectedNode(NULL)
+	, m_wndListView(m_wndListFrame.listView())
 {
 
 }
@@ -36,13 +38,12 @@ LRESULT CFlowTraceView::OnCreate(LPCREATESTRUCT lpcs)
 	m_wndVertSplitter.Create(m_wndHorzSplitter, rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, SPLIT_PROPORTIONAL);
 
 	dwStyle = WS_CHILD | WS_BORDER | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
-	if (!gSettings.GetInfoHiden())
+	if (!gSettings.InfoHiden())
 		dwStyle |= WS_VISIBLE;
 	m_wndBackTraceView.Create(m_wndHorzSplitter, rcDefault, NULL, dwStyle, 0);
 
-	m_wndListView.Create(m_wndVertSplitter, rcDefault, NULL,
-		WS_CHILD | WS_BORDER | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN |
-		LVS_REPORT | LVS_AUTOARRANGE | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS | LVS_OWNERDATA | LVS_NOCOLUMNHEADER,
+	m_wndListFrame.Create(m_wndVertSplitter, rcDefault, NULL,
+		WS_CHILD | WS_BORDER | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
 		0);
 
 	m_wndTreeView.Create(m_wndVertSplitter, rcDefault, NULL,
@@ -51,10 +52,12 @@ LRESULT CFlowTraceView::OnCreate(LPCREATESTRUCT lpcs)
 		LVS_EX_FULLROWSELECT);
 
 	m_wndHorzSplitter.SetSplitterPanes(m_wndVertSplitter, m_wndBackTraceView);
-	m_wndHorzSplitter.SetSplitterPosPct(max(10, min(90, gSettings.GetHorzSplitterPos())), false);
+	m_wndHorzSplitter.SetSplitterPosPct(max(10, min(90, gSettings.HorzSplitterPos())), false);
 
-	m_wndVertSplitter.SetSplitterPanes(m_wndTreeView, m_wndListView);
-	m_wndVertSplitter.SetSplitterPosPct(max(10, min(90, gSettings.GetVertSplitterPos())), false);
+	m_wndVertSplitter.SetSplitterPanes(m_wndTreeView, m_wndListFrame);
+	m_wndVertSplitter.SetSplitterPosPct(max(10, min(90, gSettings.VertSplitterPos())), false);
+	m_wndHorzSplitter.m_bFullDrag = false;
+	m_wndVertSplitter.m_bFullDrag = false;
 
 	ApplySettings(true);
 
@@ -71,43 +74,20 @@ void CFlowTraceView::ApplySettings(bool fontChanged)
 	m_wndTreeView.ApplySettings(fontChanged);
 	m_wndListView.ApplySettings(fontChanged);
 	m_wndBackTraceView.ApplySettings(fontChanged);
+	Gdi::ApplySettings(fontChanged);
 }
 
-LRESULT CFlowTraceView::OnLvnEndScroll(int /*idCtrl*/, LPNMHDR pnmh, BOOL& /*bHandled*/)
+void CFlowTraceView::ShowBackTrace(LOG_NODE* pSelectedNode)
 {
-	m_wndListView.UpdateCaret();
-	return 0;
-}
-
-void CFlowTraceView::ShowBackTrace(LOG_NODE* pSelectedNode, LOG_NODE* pUpdatedNode, DWORD archiveNumber)
-{
-	if (gSettings.GetInfoHiden())
+	if (gSettings.InfoHiden())
 		return;
 
-	static DWORD curArchiveNumber = 0;
-	static LOG_NODE* pCurNode = 0;
-
-	if (archiveNumber != INFINITE && curArchiveNumber != archiveNumber)
-	{
-		return;
-	}
-	if (pUpdatedNode != NULL && pCurNode != pUpdatedNode)
+	if (pSelectedNode == 0)
 	{
 		return;
 	}
 
-	if (pSelectedNode == 0 && pUpdatedNode == 0)
-	{
-		return;
-	}
-
-	pCurNode = pSelectedNode ? pSelectedNode : pUpdatedNode;
-	curArchiveNumber = gArchive.getArchiveNumber();
-
-	if (pUpdatedNode && pUpdatedNode == m_wndTreeView.GetSelectedNode() && gSettings.GetFnCallLine())
-		m_wndTreeView.Invalidate();
-
-	m_wndBackTraceView.UpdateBackTrace(pCurNode);
+	m_wndBackTraceView.UpdateBackTrace(pSelectedNode);
 }
 
 void CFlowTraceView::SetChildPos(int cx, int cy)
@@ -141,7 +121,7 @@ LRESULT CFlowTraceView::OnPositionChanging(UINT /*uMsg*/, WPARAM wParam, LPARAM 
 
 void CFlowTraceView::ClearLog()
 {
-	m_selectedNode = NULL;
+    gSyncronizedNode = NULL;
 	m_wndTreeView.Clear();
 	m_wndBackTraceView.ClearTrace();
 	m_wndListView.Clear();
@@ -173,49 +153,10 @@ LRESULT CFlowTraceView::OnCustomDraw(int /*idCtrl*/, LPNMHDR pnmh, BOOL& /*bHand
 		}
 		return CDRF_DODEFAULT;
 	}
-	else if (pnmh->hwndFrom == m_wndListView)
-	{
-		LPNMLVCUSTOMDRAW pNMLVCD = (LPNMLVCUSTOMDRAW)pnmh;
-		switch (pNMLVCD->nmcd.dwDrawStage)
-		{
-		case CDDS_PREPAINT:
-			return CDRF_NOTIFYSUBITEMDRAW;          // ask for subitem notifications.
-		case CDDS_ITEMPREPAINT:
-			m_wndListView.ItemPrePaint((int)(pNMLVCD->nmcd.dwItemSpec), pNMLVCD->nmcd.hdc, pNMLVCD->nmcd.rc);
-			return CDRF_NOTIFYSUBITEMDRAW;
-		case CDDS_ITEMPREPAINT | CDDS_SUBITEM: // recd when CDRF_NOTIFYSUBITEMDRAW is returned in
-		{                                    // response to CDDS_ITEMPREPAINT.
-			m_wndListView.DrawSubItem((int)(pNMLVCD->nmcd.dwItemSpec), pNMLVCD->iSubItem, pNMLVCD->nmcd.hdc, pNMLVCD->nmcd.rc);
-			return CDRF_SKIPDEFAULT;
-		}
-		break;
-		}
-		return CDRF_DODEFAULT;
-	}
 	return CDRF_DODEFAULT;
 }
 
-void CFlowTraceView::SyncViews(LOG_NODE* pNode, bool fromList)
-{
-	if (pNode)
-	{
-		pNode = pNode->getSyncNode();
-		if (pNode)
-		{
-			m_selectedNode = pNode;
-			m_wndTreeView.EnsureNodeVisible(pNode, false);
-			if (!fromList)
-				m_wndListView.ShowFirstSyncronised(true);
-			ShowBackTrace(pNode);
-
-			m_wndListView.Invalidate();
-			m_wndTreeView.Invalidate();
-			m_wndBackTraceView.m_wndCallFuncView.Invalidate();
-			m_wndBackTraceView.m_wndCallStackView.Invalidate();
-		}
-	}
-}
-void CFlowTraceView::SyncViews()
+LOG_NODE* CFlowTraceView::SyncViews()
 {
 	HWND hwnd = GetFocus();
 	LOG_NODE* pNode = NULL;
@@ -223,8 +164,13 @@ void CFlowTraceView::SyncViews()
 	if (hwnd == m_wndTreeView)
 	{
 		pNode = m_wndTreeView.GetSelectedNode();
+		if (pNode && pNode->isApp())
+		{
+			pNode = pNode->firstChild;
+			m_wndTreeView.EnsureNodeVisible(pNode, TRUE, FALSE);
+		}
 	}
-	else if (hwnd == m_wndListView)
+	else if (hwnd == m_wndListView.m_hWnd)
 	{
 		int iItem = m_wndListView.getSelectionItem();
 		fromList = true;
@@ -238,7 +184,25 @@ void CFlowTraceView::SyncViews()
 	{
 		pNode = m_wndBackTraceView.m_wndCallStackView.GetSelectedNode();
 	}
-	SyncViews(pNode, fromList);
+
+    if (pNode)
+    {
+        FLOW_NODE* pFlowNode = pNode->getSyncNode();
+        if (pFlowNode)
+        {
+            gSyncronizedNode = pFlowNode;
+            m_wndTreeView.EnsureNodeVisible(pFlowNode, false);
+            if (!fromList)
+				m_wndListView.ShowFirstSyncronised(true);
+            ShowBackTrace(pFlowNode);
+
+			m_wndListView.Invalidate();
+            m_wndTreeView.Invalidate();
+            m_wndBackTraceView.m_wndCallFuncView.Invalidate();
+            m_wndBackTraceView.m_wndCallStackView.Invalidate();
+        }
+    }
+	return pNode;
 }
 
 void CFlowTraceView::ShowStackView(bool show)

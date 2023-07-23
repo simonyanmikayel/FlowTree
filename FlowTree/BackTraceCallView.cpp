@@ -68,7 +68,11 @@ int CBackTraceCallView::getSubItemText(int iItem, int iSubItem, char* buf, int c
     }
     else
     {
-      const char* txt = ((FLOW_NODE*)pNode)->getCallSrc(gSettings.GetFullSrcPath());
+#ifdef HAVE_CALL_LINE
+      const char* txt = ((FLOW_NODE*)pNode)->getCallSrc(gSettings.FullSrcPath());
+#else
+        const char* txt = ((FLOW_NODE*)pNode)->getFuncSrc(gSettings.FullSrcPath());
+#endif
       cb = min((int)strlen(txt), cbBuf);
       memcpy(buf, txt, cb);
     }
@@ -78,11 +82,17 @@ int CBackTraceCallView::getSubItemText(int iItem, int iSubItem, char* buf, int c
     int line = 0;
     if (pNode->isTrace())
     {
-      line = ((TRACE_NODE*)pNode)->GetCallLine();
+#ifdef HAVE_CALL_LINE
+        line = ((TRACE_NODE*)pNode)->GetCallLine();
+#endif
     }
     else
     {
-		line = ((FLOW_NODE*)pNode)->GetCallLine();
+#ifdef HAVE_CALL_LINE
+        line = ((FLOW_NODE*)pNode)->GetCallLine();
+#else
+        line = ((FLOW_NODE*)pNode)->GetFuncLine();
+#endif
     }
     if (line > 0)
       cb = _snprintf_s(buf, cbBuf, cbBuf, "%d", line);
@@ -169,7 +179,7 @@ void CBackTraceCallView::UpdateBackTrace(LOG_NODE* pSelectedNode, bool bNested)
   }
 
   HDC hdc = ::CreateCompatibleDC(NULL);
-  SelectObject(hdc, gSettings.GetFont());
+  SelectObject(hdc, gSettings.Font());
 
   SIZE size;
   GetTextExtentPoint32(hdc, " ", 3, &size);

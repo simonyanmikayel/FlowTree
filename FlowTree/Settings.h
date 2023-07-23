@@ -2,10 +2,93 @@
 
 #include "RegKeyExt.h"
 
-#define DECL_GET(type, name) public: type Get##name () { return m_##name ;} private: type m_##name
-#define DECL_SET(type, name) public: void Set##name ( type ); private: type m_##name
-#define DECL_PROP(type, name) public: type Get##name () { return m_##name ;} void Set##name ( type ); private: type m_##name
-#define DECL_STR_PROP(type, name, cb) public: type* Get##name () { return m_##name ;} void Set##name ( const type* ); private: type m_##name[cb];
+struct RegExString
+{
+	RegExString(CRegKeyExt* pReg, LPCTSTR key, int max_buf, LPTSTR defVal = nullptr) {
+		pRegKey = pReg;
+		max_buffer = max_buf;
+		buffer = new CHAR[max_buffer + 1];
+		regKey = key;
+
+		if (!pRegKey->Read(regKey, buffer, max_buffer, defVal))
+		{
+			buffer[0] = 0;
+		}
+	}
+	~RegExString() {
+		delete[] buffer;
+	}
+	void set(const CHAR* sz, size_t n) {
+		n = min((size_t)max_buffer, n);
+		memcpy(buffer, sz, n);
+		buffer[n] = 0;
+		pRegKey->Write(regKey, buffer);
+	}
+	void set(const CHAR* sz) {
+		size_t n = strlen(sz);
+		set(sz, n);
+	}
+	const CHAR* get() {
+		return buffer;
+	}
+private:
+	CHAR* buffer;
+	LPCTSTR regKey;
+	int max_buffer;
+	CRegKeyExt* pRegKey;
+};
+
+template <typename T> struct RegExNum
+{
+	RegExNum(CRegKeyExt* pReg, LPCTSTR key, T def) {
+		pRegKey = pReg;
+		regKey = key;
+		pRegKey->Read(regKey, val, (DWORD)def);
+		//if (dbgKey && !strcmp(regKey, dbgKey))
+		//	def = def;
+	}
+	void set(T i) {
+		//if (dbgKey && !strcmp(regKey, dbgKey))
+		//	i = i;
+		val = (DWORD)i;
+		pRegKey->Write(regKey, i);
+	}
+	const T get() {
+		//if (dbgKey && !strcmp(regKey, dbgKey))
+		//	val = val;
+		return (T)val;
+	}
+
+private:
+	DWORD val;
+	LPCTSTR regKey = 0;
+	//LPCTSTR dbgKey = "CombainLoop";
+	CRegKeyExt* pRegKey = 0;
+};
+
+template <typename T> struct ReadOnly
+{
+	friend class CSettings;
+	ReadOnly(T def = 0) {
+		val = def;
+	}
+	const T get() {
+		return val;
+	}
+private:
+	ReadOnly<T>& operator = (T v) {
+		val = v;
+		return *this;
+	}
+	operator T() {
+		return val;
+	}
+	T val;
+};
+
+#define PROP_STR(var) RegExString m_##var; const CHAR* var() {return m_##var.get();} void var(const CHAR* val){m_##var.set(val);}
+#define PROP_NUM(type, var) RegExNum<type> m_##var; type var(){return m_##var.get();} void var( type val){m_##var.set(val);}
+#define PROP_GET(type, var) ReadOnly<type> m_##var; type var(){return m_##var.get();}
 
 #define MAX_FILTER_ITEM_BUF 300
 #define MAX_MODUL_ITEM_BUF MAX_PATH + 30
@@ -90,7 +173,7 @@ public:
 
     void RestoreWindPos(HWND hWnd);
     void SaveWindPos(HWND hWnd);
-    void SetConsoleColor(int consoleColor, DWORD& textColor, DWORD& bkColor);
+    void SetConsoleColor(int MsgType, DWORD& textColor, DWORD& bkColor);
     void SetUIFont(CHAR* lfFaceName, LONG lfWeight, LONG lfHeight);
     bool CheckUIFont(HDC hdc);
 
@@ -108,53 +191,53 @@ public:
 	bool WriteDbgSettings(char* filePath, DbgSettings& dbgSettings);
 	bool ReadDbgSettings(char* filePath, DbgSettings& dbgSettings);
 	void SetDbgSettings(char* filePath, DbgSettings& dbgSettings);
-	char* GetDbgSettingsPath() { return m_DbgSettingsPath; }
+	char* DbgSettingsPath() { return m_DbgSettingsPath; }
+	void SetQtCreatorPath(const char* filePath);
+	char* QtCreatorPath() { return m_QtCreatorPath; }
 
-    DECL_PROP(int, VertSplitterPos);
-    DECL_PROP(int, HorzSplitterPos);
-    DECL_PROP(int, StackSplitterPos);
-    DECL_PROP(HFONT, Font);
-    DECL_PROP(int, FontHeight);
-    DECL_PROP(int, FontWidth);
-    //DECL_PROP(DWORD, TextColor);
-    //DECL_PROP(DWORD, InfoTextColor);
-    //DECL_PROP(DWORD, BkColor);
-    //DECL_PROP(DWORD, SelColor);
-    //DECL_PROP(DWORD, BkSelColor);
-    //DECL_PROP(DWORD, SerachColor);
-    //DECL_PROP(DWORD, CurSerachColor);
-    //DECL_PROP(DWORD, SyncColor);
+	static DWORD CSettings::SelectionBkColor() { return RGB(64, 64, 64); }
+	static DWORD CSettings::InfoTextColorNative() { return RGB(0, 0, 0); }
+	static DWORD CSettings::LogListInfoBkColor() { return RGB(240, 240, 240); }
+	static DWORD CSettings::CurSelectionTxtColor() { return RGB(255, 255, 255); }
+	static DWORD CSettings::CurSelectionBkColor() { return RGB(64, 122, 255); }
 
-    DECL_PROP(DWORD, FlowTracesHiden);
-    DECL_PROP(DWORD, TreeViewHiden);
-    DECL_PROP(DWORD, InfoHiden);
-    DECL_PROP(DWORD, ShowElapsedTime);
-	DECL_PROP(DWORD, FullSrcPath);
-	DECL_PROP(DWORD, FullFnName);
+    PROP_NUM(int, VertSplitterPos);
+    PROP_NUM(int, HorzSplitterPos);
+    PROP_NUM(int, StackSplitterPos);
+	PROP_GET(HFONT, Font);
+	PROP_GET(DWORD, fontSize);
+	PROP_GET(int, FontHeight);
+	PROP_GET(int, FontWidth);
 
-    DECL_PROP(int, ColLineNN);
-    DECL_PROP(int, ColNN);
-	DECL_PROP(int, ColApp);
-	DECL_PROP(int, ColPID);
-	DECL_PROP(int, ColThreadNN);
-	DECL_PROP(int, ColFunc);
-    DECL_PROP(int, ColLine);
-    DECL_PROP(int, ColTime);
-    DECL_PROP(int, ColCallAddr);
-    DECL_PROP(int, FnCallLine);
+    PROP_NUM(DWORD, FlowTracesHiden);
+    PROP_NUM(DWORD, TreeViewHiden);
+    PROP_NUM(DWORD, InfoHiden);
+    PROP_NUM(DWORD, ShowElapsedTime);
+	PROP_NUM(DWORD, FullSrcPath);
+	PROP_NUM(DWORD, FullFnName);
+	PROP_NUM(DWORD, ShowInQt);
 
-    DECL_PROP(DWORD, UdpPort);
+    PROP_NUM(int, ColNN);
+	PROP_NUM(int, ColApp);
+	PROP_NUM(int, ColPID);
+	PROP_NUM(int, ColThreadNN);
+	PROP_NUM(int, ColFunc);
+    PROP_NUM(int, ColLine);
+    PROP_NUM(int, ColTime);
+    PROP_NUM(int, ColCallAddr);
+    PROP_NUM(int, FnCallLine);
 
-    DECL_GET(DWORD, FontSize);
-    DECL_GET(CHAR*, FontName);
-    DECL_GET(DWORD, FontWeight);
-    DECL_GET(CHAR*, ResFontName);
+	PROP_GET(DWORD, FontSize);
+	PROP_GET(CHAR*, FontName);
+	PROP_GET(DWORD, FontWeight);
+	PROP_GET(CHAR*, ResFontName);
 
 
 private:
     LOGFONT   m_logFont;
 	CHAR      m_DbgSettingsPath[MAX_PATH + 1];
-    HANDLE    m_resourceFonthandle;
+	CHAR      m_QtCreatorPath[MAX_PATH + 1];
+	HANDLE    m_resourceFonthandle;
 
     void AddDefaultFont();
 	void InitFont();

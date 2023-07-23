@@ -8,102 +8,53 @@ CSettings gSettings;
 // registry keys and values
 LPCTSTR STR_APP_REG_KEY = _T("Software\\TermianlTools\\FlowTrace");
 LPCTSTR STR_APP_REG_VAL_WINDOWPOS = _T("WindowPos");
-LPCTSTR STR_APP_REG_VAL_VERT_SPLITTER_POS = _T("VertSplitterPos");
-LPCTSTR STR_APP_REG_VAL_HORZ_SPLITTER_POS = _T("HorzSplitterPos");
-LPCTSTR STR_APP_REG_VAL_STACK_SPLITTER_POS = _T("StackSplitterPos");
 
 LPCTSTR STR_APP_REG_VAL_FONTNAME = _T("FontName_1");
 LPCTSTR STR_APP_REG_VAL_FONTWIDTH = _T("FontWeight");
 LPCTSTR STR_APP_REG_VAL_FONTSIZE = _T("FontSize");
-//LPCTSTR STR_APP_REG_VAL_BK_COLOR = _T("BkColor");
-//LPCTSTR STR_APP_REG_VAL_TEXT_COLOR = _T("TextColor");
-//LPCTSTR STR_APP_REG_VAL_INFO_TEXT_COLOR = _T("InfoTextColor");
-//LPCTSTR STR_APP_REG_VAL_SEL_COLOR = _T("SelColor");
-//LPCTSTR STR_APP_REG_VAL_BK_SEL_COLOR = _T("BkSelColor");
-//LPCTSTR STR_APP_REG_VAL_SEARCH_COLOR = _T("SearchColor");
-//LPCTSTR STR_APP_REG_VAL_CUR_SEARCH_COLOR = _T("CurSearchColor");
-//LPCTSTR STR_APP_REG_VAL_SYNC_COLOR = _T("SyncColor");
 LPCTSTR STR_APP_REG_VAL_SEARCH_LIST = _T("SearchList");
 
-LPCTSTR STR_APP_REG_VAL_UDP_PORT = _T("UdpPort");
-
-LPCTSTR STR_APP_REG_VAL_ColLineNN = _T("ColLineNN");
-LPCTSTR STR_APP_REG_VAL_ColNN = _T("ColNN");
-LPCTSTR STR_APP_REG_VAL_ColApp = _T("ColApp");
-LPCTSTR STR_APP_REG_VAL_ColPID = _T("ColPID");
-LPCTSTR STR_APP_REG_VAL_ColThreadNN = _T("ColThreadNN");
-LPCTSTR STR_APP_REG_VAL_ColFunc = _T("ColFunc");
-LPCTSTR STR_APP_REG_VAL_ColLine = _T("ColLine");
-LPCTSTR STR_APP_REG_VAL_ColTime = _T("ColTime");
-LPCTSTR STR_APP_REG_VAL_ColCallAddr = _T("ColCallAddr");
-LPCTSTR STR_APP_REG_VAL_FnCallLine = _T("FnCallLine");
-
-LPCTSTR STR_APP_REG_VAL_FLOW_TRACE_HIGEN = _T("FlowTraceHiden");
-LPCTSTR STR_APP_REG_VAL_TREE_VIEW_HIDEN = _T("TreeViewHiden");
-LPCTSTR STR_APP_REG_VAL_INFO_HIDEN = _T("InfoHiden");
-LPCTSTR STR_APP_REG_VAL_USE_PC_TIME = _T("UsePcTime");
-LPCTSTR STR_APP_REG_VAL_SHOW_APP_IP = _T("ShowAppIp");
-LPCTSTR STR_APP_REG_VAL_SHOW_APP_TIME = _T("ShowAppTIME");
-LPCTSTR STR_APP_REG_VAL_SHOW_ELAPSED_TIME = _T("ShowElapsedTime");
-LPCTSTR STR_APP_REG_VAL_FULL_SRC_PATH = _T("FullSrcPath");
-LPCTSTR STR_APP_REG_VAL_FullFnName = _T("FullFnName");
-
 LPCTSTR STR_APP_REG_VAL_DbgSettingsPath = _T("DbgSettingsPath");
+LPCTSTR STR_APP_REG_VAL_QtCreatorPath = _T("QtCreatorPath");
 
-//#define DefBkColor RGB(0,0,0)
-//#define DefTextColor RGB(176,176,176)
-//#define DefInfoTextColor RGB(128,128,128)
-//#define DefSelColor  RGB(192,192,192)
-//#define DefBkSelColor  RGB(64, 122, 255) //RGB(232,232,255) //RGB(64, 122, 255) //RGB(0xEC,0xEC,0xEC)
-//#define DefSyncColor  RGB(0,255,0)
-//#define DefSerachColor  RGB(0xA0,0xA9,0x3d)
-//#define DefCurSerachColor  RGB(64,128,64)
-
-#define DefUdpPort  8888
 #define DefFontSize 11
 
 static CHAR* DEF_FONT_NAME = _T("Consolas"); //Courier New //Consolas //Inconsolata
 
 CSettings::CSettings() :
 	CRegKeyExt(STR_APP_REG_KEY)
-	, m_Font(NULL)
+	, m_VertSplitterPos(this, _T("VertSplitterPos"), 50)
+	, m_HorzSplitterPos(this, _T("HorzSplitterPos"), 50)
+	, m_StackSplitterPos(this, _T("StackSplitterPos"), 50)
+	, m_FlowTracesHiden(this, _T("FlowTracesHiden"), TRUE)
+	, m_TreeViewHiden(this, _T("TreeViewHiden"), TRUE)
+	, m_InfoHiden(this, _T("InfoHiden"), TRUE)
+	, m_ShowElapsedTime(this, _T("ShowElapsedTime"), FALSE)
+	, m_FullSrcPath(this, _T("FullSrcPath"), FALSE)
+	, m_FullFnName(this, _T("FullFnName"), FALSE)
+	, m_ShowInQt(this, _T("ShowInQt"), TRUE)
+	, m_ColNN(this, _T("ColNN"), 0)
+	, m_ColApp(this, _T("ColApp"), 0)
+	, m_ColPID(this, _T("ColPID"), 0)
+	, m_ColThreadNN(this, _T("ColThreadNN"), 1)
+	, m_ColFunc(this, _T("ColFunc"), 1)
+	, m_ColLine(this, _T("ColLine"), 0)
+	, m_ColTime(this, _T("ColTime"), 1)
+	, m_ColCallAddr(this, _T("ColCallAddr"), 0)
+	, m_FnCallLine(this, _T("FnCallLine"), 0)
 {
-	Read(STR_APP_REG_VAL_VERT_SPLITTER_POS, m_VertSplitterPos, 50);
-	Read(STR_APP_REG_VAL_HORZ_SPLITTER_POS, m_HorzSplitterPos, 50);
-	Read(STR_APP_REG_VAL_STACK_SPLITTER_POS, m_StackSplitterPos, 50);
-	Read(STR_APP_REG_VAL_FLOW_TRACE_HIGEN, m_FlowTracesHiden, TRUE);
-	Read(STR_APP_REG_VAL_TREE_VIEW_HIDEN, m_TreeViewHiden, FALSE);
-	Read(STR_APP_REG_VAL_INFO_HIDEN, m_InfoHiden, FALSE);
-	Read(STR_APP_REG_VAL_SHOW_ELAPSED_TIME, m_ShowElapsedTime, FALSE);
-	Read(STR_APP_REG_VAL_FULL_SRC_PATH, m_FullSrcPath, FALSE);
-	Read(STR_APP_REG_VAL_FullFnName, m_FullFnName, TRUE);
+	
 
-	Read(STR_APP_REG_VAL_ColLineNN, m_ColLineNN);
-	Read(STR_APP_REG_VAL_ColNN, m_ColNN);
-	Read(STR_APP_REG_VAL_ColPID, m_ColPID);
-	Read(STR_APP_REG_VAL_ColThreadNN, m_ColThreadNN);
-	Read(STR_APP_REG_VAL_ColFunc, m_ColFunc, 1);
-	Read(STR_APP_REG_VAL_ColLine, m_ColLine, 1);
-	Read(STR_APP_REG_VAL_ColTime, m_ColTime);
-	Read(STR_APP_REG_VAL_ColCallAddr, m_ColCallAddr);
-	Read(STR_APP_REG_VAL_FnCallLine, m_FnCallLine);
-
-	//Read(STR_APP_REG_VAL_BK_COLOR, m_BkColor, DefBkColor);
-	//Read(STR_APP_REG_VAL_TEXT_COLOR, m_TextColor, DefTextColor);
-	//Read(STR_APP_REG_VAL_INFO_TEXT_COLOR, m_InfoTextColor, DefInfoTextColor);
-	//Read(STR_APP_REG_VAL_SEL_COLOR, m_SelColor, DefSelColor);
-	//Read(STR_APP_REG_VAL_BK_SEL_COLOR, m_BkSelColor, DefSyncColor);
-	//Read(STR_APP_REG_VAL_SYNC_COLOR, m_BkSelColor, DefSyncColor);
-	//Read(STR_APP_REG_VAL_BK_SEL_COLOR, m_BkSelColor, DefBkSelColor);
-	//Read(STR_APP_REG_VAL_SEARCH_COLOR, m_SerachColor, DefSerachColor);
-	//Read(STR_APP_REG_VAL_CUR_SEARCH_COLOR, m_CurSerachColor, DefCurSerachColor);
-
-	Read(STR_APP_REG_VAL_UDP_PORT, m_UdpPort, DefUdpPort);
 
 	InitFont();
 
 	Read(STR_APP_REG_VAL_DbgSettingsPath, m_DbgSettingsPath, MAX_PATH, "");
 	ReadDbgSettings(m_DbgSettingsPath, m_DbgSettings);
+	
+	m_QtCreatorPath[0] = 0;
+	Read(STR_APP_REG_VAL_QtCreatorPath, m_QtCreatorPath, MAX_PATH, "");
+	if (!m_QtCreatorPath[0])
+		SetQtCreatorPath("C:\\Qt\\Tools\\QtCreator\\bin\\qtcreator.exe");
 }
 
 bool CSettings::CheckUIFont(HDC hdc)
@@ -144,6 +95,12 @@ void CSettings::SetDbgSettings(char* filePath, DbgSettings& dbgSettings)
 	m_DbgSettings = dbgSettings;
 	strcpy_s(m_DbgSettingsPath, filePath);
 	Write(STR_APP_REG_VAL_DbgSettingsPath, filePath);
+}
+
+void CSettings::SetQtCreatorPath(const char* filePath)
+{
+	strcpy_s(m_QtCreatorPath, filePath);
+	Write(STR_APP_REG_VAL_QtCreatorPath, filePath);
 }
 
 bool CSettings::WriteDbgSettings(char* FilterPath, DbgSettings& dbgSettings)
@@ -226,7 +183,7 @@ void CSettings::InitFont()
 
 	Read(STR_APP_REG_VAL_FONTNAME, m_logFont.lfFaceName, LF_FACESIZE, DEF_FONT_NAME);
 	Read(STR_APP_REG_VAL_FONTWIDTH, m_logFont.lfWeight, FW_NORMAL);
-	Read(STR_APP_REG_VAL_FONTSIZE, m_FontSize, DefFontSize);
+	Read(STR_APP_REG_VAL_FONTSIZE, m_FontSize.val, DefFontSize);
 
 	m_FontName = m_logFont.lfFaceName;
 	m_FontWeight = m_logFont.lfWeight;
@@ -321,43 +278,23 @@ void CSettings::SaveWindPos(HWND hWnd)
 		Write(STR_APP_REG_VAL_WINDOWPOS, &wpl, sizeof(wpl));
 }
 
-void CSettings::SetConsoleColor(int consoleColor, DWORD& textColor, DWORD& bkColor)
+void CSettings::SetConsoleColor(int MsgType, DWORD& textColor, DWORD& bkColor)
 {
-	if (consoleColor)
-	{
-		if (consoleColor == 30)
-			textColor = RGB(0, 0, 0);//30	Black
-		else if (consoleColor == 31)
-			textColor = RGB(255, 0, 0);//31	Red
-		else if (consoleColor == 32)
-			textColor = RGB(0, 255, 0);//32	Green
-		else if (consoleColor == 33)
-			textColor = RGB(255, 255, 0);//33	Yellow
-		else if (consoleColor == 34)
-			textColor = RGB(0, 0, 255);//34	Blue
-		else if (consoleColor == 35)
-			textColor = RGB(255, 0, 255);//35	Magenta
-		else if (consoleColor == 36)
-			textColor = RGB(0, 255, 255);//36	Cyan
-		else if (consoleColor == 37)
-			textColor = RGB(128, 128, 128);//37	Light gray
-
-		else if (consoleColor == 40)
-			bkColor = RGB(0, 0, 0);//40	Black
-		else if (consoleColor == 41)
-			bkColor = RGB(255, 0, 0);//41	Red
-		else if (consoleColor == 42)
-			bkColor = RGB(0, 255, 0);//42	Green
-		else if (consoleColor == 43)
-			bkColor = RGB(255, 255, 0);//43	Yellow
-		else if (consoleColor == 44)
-			bkColor = RGB(0, 0, 255);//44	Blue
-		else if (consoleColor == 45)
-			bkColor = RGB(255, 0, 255);//45	Magenta
-		else if (consoleColor == 46)
-			bkColor = RGB(0, 255, 255);//46	Cyan
-		else //if (consoleColor == 47)
-			bkColor = RGB(128, 128, 128);//47	Light gray
+	enum QtMsgType { QtDebugMsg, QtWarningMsg, QtCriticalMsg, QtFatalMsg, QtInfoMsg };
+	if (MsgType == QtInfoMsg) {
+		textColor = RGB(0, 255, 0);//32	Green
+		//bkColor = RGB(0, 0, 0);//40	Black
+	}
+	else if (MsgType == QtFatalMsg || MsgType == QtCriticalMsg) {
+		textColor = RGB(255, 0, 0);//31	Red
+		//bkColor = RGB(0, 0, 0);//40	Black
+	}
+	else if (MsgType == QtWarningMsg) {
+		textColor = RGB(255, 255, 0);//33	Yellow
+		//bkColor = RGB(0, 0, 0);//40	Black
+	}
+	else { //MsgType == QtDebugMsg
+		// do nothing
 	}
 }
 
@@ -408,32 +345,5 @@ CHAR* CSettings::GetSearchList()
 	return searchList;
 }
 
-void CSettings::SetVertSplitterPos(int i) { m_VertSplitterPos = i;  Write(STR_APP_REG_VAL_VERT_SPLITTER_POS, m_VertSplitterPos); }
-void CSettings::SetHorzSplitterPos(int i) { m_HorzSplitterPos = i;  Write(STR_APP_REG_VAL_HORZ_SPLITTER_POS, m_HorzSplitterPos); }
-void CSettings::SetStackSplitterPos(int i) { m_StackSplitterPos = i;  Write(STR_APP_REG_VAL_STACK_SPLITTER_POS, m_StackSplitterPos); }
 
-void CSettings::SetColLineNN(int i) { m_ColLineNN = i;  Write(STR_APP_REG_VAL_ColLineNN, m_ColLineNN); }
-void CSettings::SetColNN(int i) { m_ColNN = i;  Write(STR_APP_REG_VAL_ColNN, m_ColNN); }
-void CSettings::SetColApp(int i) { m_ColApp = i; Write(STR_APP_REG_VAL_ColApp, m_ColApp); }
-void CSettings::SetColPID(int i) { m_ColPID = i; Write(STR_APP_REG_VAL_ColPID, m_ColPID); }
-void CSettings::SetColThreadNN(int i) { m_ColThreadNN = i; Write(STR_APP_REG_VAL_ColThreadNN, m_ColThreadNN); }
-void CSettings::SetColFunc(int i) { m_ColFunc = i; Write(STR_APP_REG_VAL_ColFunc, m_ColFunc); }
-void CSettings::SetColLine(int i) { m_ColLine = i; Write(STR_APP_REG_VAL_ColLine, m_ColLine); }
-void CSettings::SetColTime(int i) { m_ColTime = i; Write(STR_APP_REG_VAL_ColTime, m_ColTime); }
-void CSettings::SetColCallAddr(int i) { m_ColCallAddr = i; Write(STR_APP_REG_VAL_ColCallAddr, m_ColCallAddr); }
-void CSettings::SetFnCallLine(int i) { m_FnCallLine = i; Write(STR_APP_REG_VAL_FnCallLine, m_FnCallLine); }
 
-//void CSettings::SetBkColor(DWORD i){ m_BkColor = i; Write(STR_APP_REG_VAL_BK_COLOR, m_BkColor); }
-//void CSettings::SetTextColor(DWORD i){ m_TextColor = i; Write(STR_APP_REG_VAL_TEXT_COLOR, m_TextColor); }
-//void CSettings::SetInfoTextColor(DWORD i){ m_InfoTextColor = i; Write(STR_APP_REG_VAL_INFO_TEXT_COLOR, m_InfoTextColor); }
-//void CSettings::SetSelColor(DWORD i){ m_SelColor = i; Write(STR_APP_REG_VAL_SEL_COLOR, m_SelColor); }
-//void CSettings::SetSerachColor(DWORD i){ m_SerachColor = i; Write(STR_APP_REG_VAL_SEARCH_COLOR, m_SerachColor); }
-//void CSettings::SetCurSerachColor(DWORD i){ m_CurSerachColor = i; Write(STR_APP_REG_VAL_CUR_SEARCH_COLOR, m_CurSerachColor); }
-
-void CSettings::SetFlowTracesHiden(DWORD i) { m_FlowTracesHiden = i; Write(STR_APP_REG_VAL_FLOW_TRACE_HIGEN, m_FlowTracesHiden); }
-void CSettings::SetTreeViewHiden(DWORD i) { m_TreeViewHiden = i; Write(STR_APP_REG_VAL_TREE_VIEW_HIDEN, m_TreeViewHiden); }
-void CSettings::SetInfoHiden(DWORD i) { m_InfoHiden = i; Write(STR_APP_REG_VAL_INFO_HIDEN, m_InfoHiden); }
-void CSettings::SetShowElapsedTime(DWORD i) { m_ShowElapsedTime = i; Write(STR_APP_REG_VAL_SHOW_ELAPSED_TIME, m_ShowElapsedTime); }
-void CSettings::SetFullSrcPath(DWORD i) { m_FullSrcPath = i; Write(STR_APP_REG_VAL_FULL_SRC_PATH, m_FullSrcPath); }
-void CSettings::SetFullFnName(DWORD i) { m_FullFnName = i; Write(STR_APP_REG_VAL_FullFnName, m_FullFnName); }
-void CSettings::SetUdpPort(DWORD i) { m_UdpPort = i; Write(STR_APP_REG_VAL_UDP_PORT, m_UdpPort); }

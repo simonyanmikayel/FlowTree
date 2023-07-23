@@ -1,169 +1,67 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stdafx.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="AboutDlg.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Archive.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="BackTraceCallView.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="BackTraceView.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Buffer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="FlowTraceView.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="FontPreviewCombo.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Helpers.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="LogData.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="LogListView.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="LogTreeView.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MainFrm.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SearchInfo.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ServerThread.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Settings.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="StdLog.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="WorkerThread.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Dbg.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DlgSettings.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DlgDetailes.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DlgProgress.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DlgSnapshots.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DlgDebug.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+    <ClInclude Include="AboutDlg.h" />
+    <ClInclude Include="Archive.h" />
+    <ClInclude Include="BackTraceCallView.h" />
+    <ClInclude Include="BackTraceView.h" />
+    <ClInclude Include="Buffer.h" />
+    <ClInclude Include="Dbg.h" />
+    <ClInclude Include="DlgDebug.h" />
+    <ClInclude Include="DlgDetailes.h" />
+    <ClInclude Include="DlgProgress.h" />
+    <ClInclude Include="DlgSettings.h" />
+    <ClInclude Include="FlowTraceView.h" />
+    <ClInclude Include="FontPreviewCombo.h" />
+    <ClInclude Include="Helpers.h" />
+    <ClInclude Include="LogData.h" />
+    <ClInclude Include="LogListView.h" />
+    <ClInclude Include="LogTreeView.h" />
+    <ClInclude Include="MainFrm.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="SearchInfo.h" />
+    <ClInclude Include="ServerThread.h" />
+    <ClInclude Include="Settings.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="StdLog.h" />
+    <ClInclude Include="WorkerThread.h" />
+    <ClInclude Include="GDI.h" />
+    <ClInclude Include="LogListFrame.h" />
+    <ClInclude Include="LogListInfo.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="stdafx.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="FlowTrace.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="AboutDlg.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Archive.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="BackTraceCallView.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="BackTraceView.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="FlowTraceView.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="FontPreviewCombo.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Helpers.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="LogData.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="LogListView.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="LogTreeView.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MainFrm.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="SearchInfo.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ServerThread.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Settings.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="StdLog.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="WorkerThread.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Dbg.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DlgSettings.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DlgDetailes.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DlgProgress.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DlgSnapshots.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DlgDebug.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
+    <ClCompile Include="AboutDlg.cpp" />
+    <ClCompile Include="Archive.cpp" />
+    <ClCompile Include="BackTraceCallView.cpp" />
+    <ClCompile Include="BackTraceView.cpp" />
+    <ClCompile Include="Dbg.cpp" />
+    <ClCompile Include="DlgDebug.cpp" />
+    <ClCompile Include="DlgDetailes.cpp" />
+    <ClCompile Include="DlgProgress.cpp" />
+    <ClCompile Include="DlgSettings.cpp" />
+    <ClCompile Include="FlowTrace.cpp" />
+    <ClCompile Include="FlowTraceView.cpp" />
+    <ClCompile Include="FontPreviewCombo.cpp" />
+    <ClCompile Include="Helpers.cpp" />
+    <ClCompile Include="LogData.cpp" />
+    <ClCompile Include="LogListView.cpp" />
+    <ClCompile Include="LogTreeView.cpp" />
+    <ClCompile Include="MainFrm.cpp" />
+    <ClCompile Include="SearchInfo.cpp" />
+    <ClCompile Include="ServerThread.cpp" />
+    <ClCompile Include="Settings.cpp" />
+    <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="StdLog.cpp" />
+    <ClCompile Include="WorkerThread.cpp" />
+    <ClCompile Include="GDI.cpp" />
+    <ClCompile Include="LogListFrame.cpp" />
+    <ClCompile Include="LogListInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="FlowTree.rc">
@@ -245,7 +143,6 @@
     <None Include="res\font1.bin">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="ToDo.txt" />

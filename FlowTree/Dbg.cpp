@@ -356,6 +356,7 @@ void Dbg::EnumFunctionLines(IDiaSymbol *pFunction)
         }
     }
 
+
     if (m_CurInfo.cLine > 0) {
         m_CurInfo.fnName = m_pMemBuf->New<char>(cbFuncName, false);
         WideCharToMultiByte(CP_ACP, 0, bstrName, -1, m_CurInfo.fnName, cbFuncName, NULL, NULL);
@@ -424,6 +425,11 @@ void Dbg::EnumFunctionLines(IDiaSymbol *pFunction)
         }
 
 		m_CurInfo.attr = GetAttr(m_CurInfo.fnName);
+        if (!m_CurInfo.pathIncluded) {
+            if (!m_CurInfo.attr && !(m_CurInfo.attr & LOG_ATTR_SHOW_FUNC)) {
+                m_CurInfo.cLine = 0;
+            }
+        }
     }
 
     SysFreeString(bstrName);
@@ -442,11 +448,9 @@ BYTE Dbg::GetAttr(char *szFunc)
 				if (strstr(szFunc, arDbgFilter[i].m_szFunc))
 				{
 					if (arDbgFilter[i].m_showFunc == 0)
-						return LOG_ATTR_SKIP_LOG;
-					else if (arDbgFilter[i].m_showFunc == 1)
-						return LOG_ATTR_SKIP_INNER;
+                        return LOG_ATTR_SKIP_FUNC;
                     else
-                        return LOG_ATTR_SKIP_ALL;
+                        return LOG_ATTR_SHOW_FUNC;
                 }
 			}
 		}
@@ -598,10 +602,7 @@ void Dbg::EnumLineNumbers(IDiaEnumLineNumbers *pLines)
 		}
 	}
 
-	if (!pathIncluded)
-	{
-		m_CurInfo.cLine = 0;
-	}
+    m_CurInfo.pathIncluded = pathIncluded;
 
 	if (pLine)
 		pLine->Release();

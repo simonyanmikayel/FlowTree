@@ -14,8 +14,6 @@ namespace Helpers
         bool bMbuttonPressed = (GetKeyState(VK_MBUTTON) & 0x8000) != 0;
         if (bCtrlPressed || bMbuttonPressed)
         {
-            //if (pNode && !pNode->isSynchronized(gSyncronizedNode))
-            //    gMainFrame->SyncViews();
             ShowInIDE(pNode, true);
         }
         else if (bAltPressed)
@@ -43,10 +41,15 @@ namespace Helpers
 
     void ShowInIDE(LOG_NODE* pSelectedNode, bool bShowCallSite)
     {
+        if (bShowCallSite) {
+#ifndef HAVE_CALL_LINE
+            return;
+#endif
+        }
+        
         if (pSelectedNode)
         {
             STARTUPINFO si;
-            PROCESS_INFORMATION pi;
             ZeroMemory(&si, sizeof(si));
             si.cb = sizeof(si);
             //D:\Programs\eclipse\eclipse-cpp-neon-M4a-win32-x86_64\eclipsec.exe -name Eclipse --launcher.openFile X:\prj\c\c\ctap\kernel\CTAPparameters\src\CTAP_parameters.c:50
@@ -62,7 +65,7 @@ namespace Helpers
                 if (pNode->isFlow())
                 {
                     FLOW_NODE* pFlowNode = (FLOW_NODE*)pNode;
-                    src = pFlowNode->getCallSrc(true);
+                    src = pFlowNode->getFuncSrc(true);
                 }
             }
             else if (pSelectedNode->isFlow())
@@ -84,24 +87,36 @@ namespace Helpers
             if (line <= 0)
                 line = 1;
 
-
-            int cbCmd = _sntprintf_s(cmd, max_cmd, max_cmd, " %s %d", src, line);
-            char *srcPos = StrRStrIA(cmd, cmd + cbCmd, src);
-            char *srcEnd = srcPos + strlen(src);
-            while (srcPos < srcEnd)
-            {
-                if (*srcPos == ' ')
-                    *srcPos = '*';
-                srcPos++;
+            if (gSettings.ShowInQt()) {
+                int cbCmd = _sntprintf_s(cmd, max_cmd, max_cmd, "\"%s\" -client \"%s:%d\"", gSettings.QtCreatorPath(), src, line);
+                PROCESS_INFORMATION pi;
+                if (!CreateProcessA(NULL, cmd, NULL, NULL, FALSE,
+                    NORMAL_PRIORITY_CLASS, NULL, NULL, &si, &pi))
+                {
+                    Helpers::SysErrMessageBox("Failed to run Qt creator at path %s", gSettings.QtCreatorPath());
+                }
+                CloseHandle(pi.hProcess);
+                CloseHandle(pi.hThread);
             }
-            if (!CreateProcessA(DteAppName(), cmd, NULL, NULL, FALSE,
-                NORMAL_PRIORITY_CLASS, NULL, NULL, &si, &pi))
-            {
-                Helpers::SysErrMessageBox("Failed to run %s", DteAppName());
+            else {
+                int cbCmd = _sntprintf_s(cmd, max_cmd, max_cmd, " %s %d", src, line);
+                char* srcPos = StrRStrIA(cmd, cmd + cbCmd, src);
+                char* srcEnd = srcPos + strlen(src);
+                while (srcPos < srcEnd)
+                {
+                    if (*srcPos == ' ')
+                        *srcPos = '*';
+                    srcPos++;
+                }
+                PROCESS_INFORMATION pi;
+                if (!CreateProcessA(DteAppName(), cmd, NULL, NULL, FALSE,
+                    NORMAL_PRIORITY_CLASS, NULL, NULL, &si, &pi))
+                {
+                    Helpers::SysErrMessageBox("Failed to run %s", DteAppName());
+                }
+                CloseHandle(pi.hProcess);
+                CloseHandle(pi.hThread);
             }
-            CloseHandle(pi.hProcess);
-            CloseHandle(pi.hThread);
-
         }
     }
 
@@ -371,11 +386,16 @@ namespace Helpers
         bool disable;
         disable = (pNode == NULL || !pNode->isInfo());
         AddMenu(hMenu, cMenu, ID_SYNC_VIEWES, _T("Synchronize views\tTab"), disable, MENU_ICON_SYNC);
-
+#ifdef HAVE_CALL_LINE
         disable = (pNode == NULL || !pNode->isInfo());
         AddMenu(hMenu, cMenu, ID_SHOW_CALL_IN_STUDIO, _T("Show Call Line\tCtrl+Click"), disable);
+#endif
 
+#ifdef HAVE_CALL_LINE
         disable = (pNode == NULL || !pNode->isInfo() || pNode->isTrace());
+#else
+        disable = (pNode == NULL || !pNode->isInfo());
+#endif
         AddMenu(hMenu, cMenu, ID_SHOW_FUNC_IN_STUDIO, _T("Show Function\tAlt+Click"), disable);
 
         InsertMenu(hMenu, cMenu++, MF_BYPOSITION | MF_SEPARATOR, 0, _T(""));
@@ -435,5 +455,9 @@ namespace Helpers
         return utf8_to_wstring(str);
     }
 
+    void UpdateStatusBar()
+    {
+        gMainFrame->UpdateStatusBar();
+    }
 };
 

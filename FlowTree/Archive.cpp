@@ -42,13 +42,13 @@ void Archive::onPaused()
 
 void Archive::clearArchive()
 {
-	EnterCriticalSection(&cs);
+    lock();
 	archiveNumber++;
 	curApp = 0;
     curThread = 0;
 	nn = 0;
+    bookmarkNumber = 0;
 	tickCount = GetTickCount();
-    getSNAPSHOT().clear();
 
 	std::vector<DbgInfo*> arDbgInfo;
 	if (m_rootNode)
@@ -69,7 +69,7 @@ void Archive::clearArchive()
     m_pNodes = nullptr;
     m_rootNode = nullptr;
     m_pTraceBuf->Free();
-    m_listedNodes->Free();
+    m_listedNodes->FreeListedNodes();
 
 	m_pNodes = new PtrArray<LOG_NODE>(m_pTraceBuf);
 	m_rootNode = (ROOT_NODE*)m_pNodes->Add(sizeof(ROOT_NODE), true);
@@ -80,7 +80,7 @@ void Archive::clearArchive()
 	{
 		addApp(arDbgInfo[i]);
 	}
-	LeaveCriticalSection(&cs);
+    unlock();
 }
 
 size_t Archive::UsedMemory() 
@@ -148,6 +148,7 @@ THREAD_NODE* Archive::addThread(APP_NODE* pAppNode, int tid)
 	pAppNode->add_child(pNode);
     pNode->hasCheckBox = 1;
     pNode->checked = 1;
+    pNode->threadNode = pNode;
     return pNode;
 }
 
@@ -195,109 +196,6 @@ LOG_NODE* Archive::addFlow(THREAD_NODE* pThreadNode, CmdFlow* pCmdFlow)
     return pNode;
 }
 
-static int getCollor(char* pBuf, int &iSkip, int cb)
-{
-    int color = 0;
-    if (iSkip < cb && isdigit(pBuf[iSkip]))
-    {
-        color = pBuf[iSkip] - '0';
-        iSkip++;
-        if (iSkip < cb && isdigit(pBuf[iSkip]))
-        {
-            color = (10 * color) + (pBuf[iSkip] - '0');
-            iSkip++;
-        }
-    }
-    return color;
-}
-
-static bool setCollor(THREAD_NODE* pThreadNode, unsigned char* pTrace, int i, int &cb_trace, int& color)
-{
-    char* pBuf = pThreadNode->COLOR_BUF;
-    bool bRet = false;
-    if (pTrace[i] == '\033')
-    {
-        pThreadNode->cb_color_buf = 0;
-    }
-    else if (pThreadNode->cb_color_buf == 0)
-    {
-        // no color in buffer and in trace
-        return false;
-    }
-    bool reset_buffer = false;
-    int cb_color_old = pThreadNode->cb_color_buf;
-    int cb_color = min(cb_trace - i, (int)sizeof(pThreadNode->COLOR_BUF) - pThreadNode->cb_color_buf - 1);
-    if (cb_color <= 0)
-    {
-        pThreadNode->cb_color_buf = 0;
-        return false;
-    }
-    memcpy(pBuf + pThreadNode->cb_color_buf, pTrace + i, cb_color);
-    pThreadNode->cb_color_buf += cb_color;
-    pBuf[pThreadNode->cb_color_buf] = 0;
-
-    int iSkip = 0, color1 = 0, color2 = 0;
-    if (pBuf[0] == '\033' && pBuf[1] == '[')
-    {
-        iSkip = 2;
-        color1 = getCollor(pBuf, iSkip, pThreadNode->cb_color_buf);
-        if (pBuf[iSkip] == ';')
-        {
-            iSkip++;
-            color2 = getCollor(pBuf, iSkip, pThreadNode->cb_color_buf);
-        }
-        if (pBuf[iSkip] == ';') //getting third color as color2
-        {
-            iSkip++;
-            color2 = getCollor(pBuf, iSkip, pThreadNode->cb_color_buf);
-        }
-
-        if (iSkip < pThreadNode->cb_color_buf && pBuf[iSkip] == 'm')
-        {
-            iSkip++;
-            bRet = true;
-        }
-    }
-
-    if (iSkip - cb_color_old != cb_trace - i)
-    {
-        reset_buffer = true; //we have data after collor, so will wait for new one
-    }
-
-    if (iSkip)
-    {
-        iSkip -= cb_color_old;
-        if (iSkip > 0)
-        {
-            if (cb_trace - i - iSkip >= 0)
-            {
-                memmove(pTrace + i, pTrace + i + iSkip, cb_trace - i - iSkip);
-                cb_trace -= iSkip;
-            }
-            else
-            {
-                ATLASSERT(FALSE);
-                reset_buffer = true;
-                bRet = false;
-            }
-        }
-    }
-
-    if (bRet)
-    {
-        if (!color)
-            color = color1 ? color1 : color2;
-        reset_buffer = true;
-    }
-
-    if (reset_buffer)
-    {
-        pThreadNode->cb_color_buf = 0;
-    }
-
-    return bRet;
-}
-
 LOG_NODE* Archive::addTrace(THREAD_NODE* pThreadNode, CmdTrace *pCmdTrace, int& prcessed)
 {
     if (prcessed >= pCmdTrace->cb_trace)
@@ -312,19 +210,8 @@ LOG_NODE* Archive::addTrace(THREAD_NODE* pThreadNode, CmdTrace *pCmdTrace, int& 
 #endif
     int i = prcessed;
     int cWhite = 0;
-    int color = 0;
-    setCollor(pThreadNode, pTrace, i, pCmdTrace->cb_trace, color);
     for (; i < pCmdTrace->cb_trace; i++)
     {
-        if (pTrace[i] == '\033')
-        {
-            if (setCollor(pThreadNode, pTrace, i, pCmdTrace->cb_trace, color))
-            {
-                i--;
-                continue;
-            }
-        }
-
         if (pTrace[i] == '\n')
         {
             i++;
@@ -351,17 +238,9 @@ LOG_NODE* Archive::addTrace(THREAD_NODE* pThreadNode, CmdTrace *pCmdTrace, int& 
     {
         if (pThreadNode->latestTrace && endsWithNewLine)
             pThreadNode->latestTrace->hasNewLine = 1;
-        if (!pThreadNode->emptLineColor && color)
-            pThreadNode->emptLineColor = color;
         prcessed += i;
         return NULL;
     }
-
-    if (pThreadNode->emptLineColor && !color)
-    {
-        color = pThreadNode->emptLineColor;
-    }
-    pThreadNode->emptLineColor = 0;
 
     bool newChank = false;
     // check if we need append to previous trace
@@ -406,6 +285,19 @@ LOG_NODE* Archive::addTrace(THREAD_NODE* pThreadNode, CmdTrace *pCmdTrace, int& 
             fnName++;
             cb_fn_name--;
         }
+        for (int i = cb_fn_name - 1; i > 0; i--) {
+            if (fnName[i] == '(') {
+                cb_fn_name = i;
+                break;
+            }
+        }
+        for (int i = cb_fn_name - 1; i > 0; i--) {
+            if (fnName[i] == ' ') {
+                cb_fn_name -= i;
+                fnName +=i;
+                break;
+            }
+        }
         TRACE_NODE* pNode = (TRACE_NODE*)m_pNodes->Add(sizeof(TRACE_NODE) + cb_fn_name + sizeof(TRACE_CHANK) + cb, true);
         if (!pNode)
             return nullptr;
@@ -442,9 +334,7 @@ LOG_NODE* Archive::addTrace(THREAD_NODE* pThreadNode, CmdTrace *pCmdTrace, int& 
         pThreadNode->latestTrace = pNode;
     }
 
-    //update other fieds
-    if (!pThreadNode->latestTrace->color)
-        pThreadNode->latestTrace->color = color;
+    pThreadNode->latestTrace->MsgType = pCmdTrace->MsgType;
 
     prcessed += i;
     pThreadNode->latestTrace->lengthCalculated = 0;
@@ -453,31 +343,40 @@ LOG_NODE* Archive::addTrace(THREAD_NODE* pThreadNode, CmdTrace *pCmdTrace, int& 
 
 void Archive::RegisterApp(DbgInfo* pDbgInfo)
 {
-	EnterCriticalSection(&cs);
+    lock();
 	if (!getApp(pDbgInfo->Pid))
 		addApp(pDbgInfo);
-	LeaveCriticalSection(&cs);
+    unlock();
 }
 
-bool Archive::append(DWORD pid, CmdLog* pLog)
+LOG_NODE* Archive::append(DWORD pid, CmdLog* pLog)
 {
 	bool ret = false;
+    LOG_NODE* pNode = nullptr;
 
-	EnterCriticalSection(&cs);
+    lock();
 	do
 	{
 		APP_NODE* pAppNode = getApp(pid);
-		if (!pAppNode)
-			break;
-		if (pLog->cmd != CMD_FLOW && pLog->cmd != CMD_TRACE)
-			break;
+        if (!pAppNode) {
+            ATLASSERT(false);
+            break;
+        }
+		if (pLog->cmd != CMD_FLOW && pLog->cmd != CMD_TRACE) {
+            ATLASSERT(false);
+            break;
+        }
 		THREAD_NODE* pThreadNode = getThread(pAppNode, pLog);
-		if (!pThreadNode)
-			break;
+		if (!pThreadNode) {
+            ATLASSERT(false);
+            break;
+        }
 		if (pLog->cmd == CMD_FLOW)
 		{
-			if (!addFlow(pThreadNode, (CmdFlow*)pLog))
-				break;
+			if (!(pNode = addFlow(pThreadNode, (CmdFlow*)pLog))) {
+                ATLASSERT(false);
+                break;
+            }
 		}
 		else if (pLog->cmd == CMD_TRACE)
 		{
@@ -487,7 +386,7 @@ bool Archive::append(DWORD pid, CmdLog* pLog)
 			{
 				int prcessed0 = prcessed;
 				int cb_trace0 = pCmdTrace->cb_trace;
-				addTrace(pThreadNode, pCmdTrace, prcessed);
+                pNode = addTrace(pThreadNode, pCmdTrace, prcessed);
 				if (prcessed0 >= prcessed && cb_trace0 <= pCmdTrace->cb_trace && prcessed < pCmdTrace->cb_trace)
 				{
 					ATLASSERT(FALSE);
@@ -497,55 +396,39 @@ bool Archive::append(DWORD pid, CmdLog* pLog)
 		}
 		ret = !m_pNodes->IsFull();
 	} while (false);
-	LeaveCriticalSection(&cs);
+    unlock();
 
-	return ret;
+    ATLASSERT(pNode);
+	return pNode;
 }
 
 
 DWORD Archive::getCount()
 {
-    return m_pNodes ? m_pNodes->Count() : 0;
+    DWORD c;
+    lock();
+    c = m_pNodes ? m_pNodes->Count() : 0;
+    unlock();
+    return c;
 }
 
 
-
-void ListedNodes::updateList(BOOL flowTraceHiden)
+void ListedNodes::updateList(bool reset, bool flowTraceHiden, bool searchFilterOn)
 {
-    DWORD count = gArchive.getCount();
-    for (DWORD i = archiveCount; i < count; i++)
-    {
-        addNode(gArchive.getNode(i), flowTraceHiden);
-    }
-    archiveCount = count;
-}
-
-void ListedNodes::applyFilter(BOOL flowTraceHiden)
-{
-    Free();
-    archiveCount = gArchive.getCount();
-    //stdlog("%u\n", GetTickCount());
-    for (DWORD i = 0; i < archiveCount; i++)
-    {
-        addNode(gArchive.getNode(i), flowTraceHiden);
-    }
-    //stdlog("%u\n", GetTickCount());
-}
-
-void SNAPSHOT::update()
-{
-    first = 0, last = INFINITE;
-    if (curSnapShot)
-    {
-        if (curSnapShot == 1)
+    if (reset) {
+        FreeListedNodes();
+        archiveCount = gArchive.getCount();
+        for (DWORD i = 0; i < archiveCount; i++)
         {
-            size_t c = snapShots.size();
-            first = snapShots[c - 1].pos;
+            addNode(gArchive.getNode(i), flowTraceHiden, searchFilterOn);
         }
-        else
+    }
+    else {
+        DWORD count = gArchive.getCount();
+        for (DWORD i = archiveCount; i < count; i++)
         {
-            first = (curSnapShot == 2) ? 0 : snapShots[curSnapShot - 3].pos;
-            last = snapShots[curSnapShot - 2].pos;
+            addNode(gArchive.getNode(i), flowTraceHiden, searchFilterOn);
         }
+        archiveCount = count;
     }
 }

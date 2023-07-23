@@ -8,21 +8,23 @@
 LRESULT DlgSettings::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 {
   m_lblFont.Attach(GetDlgItem(IDC_FONT_NAME));
-  m_UdpPort.Attach(GetDlgItem(IDC_EDIT_PORT));
+  m_QtCreatorPath.Attach(GetDlgItem(IDC_EDIT_QT_CREATOR_PATH));
   m_btnFont.Attach(GetDlgItem(IDC_BTN_FONT));
   m_btnReset.Attach(GetDlgItem(IDC_BUTTON_RESET));
   m_FullSrcPath.Attach(GetDlgItem(IDC_CHECK_FULL_SRC_PATH));
   m_FullFnName.Attach(GetDlgItem(IDC_CHECK_FULL_FN_NAME));
+  m_ShowInQt.Attach(GetDlgItem(IDC_CHECK_SHOW_IN_QT));
   
-  m_FontSize = gSettings.GetFontSize();
-  strncpy_s(m_FaceName, _countof(m_FaceName), gSettings.GetFontName(), _countof(m_FaceName) - 1);
+  m_QtCreatorPath.SetWindowText(gSettings.QtCreatorPath());
+  m_FontSize = gSettings.FontSize();
+  strncpy_s(m_FaceName, _countof(m_FaceName), gSettings.FontName(), _countof(m_FaceName) - 1);
   m_FaceName[LF_FACESIZE - 1] = 0;
-  m_lfWeight = gSettings.GetFontWeight();
+  m_lfWeight = gSettings.FontWeight();
   SetFontLabel();
 
-  SetDlgItemInt(IDC_EDIT_PORT, gSettings.GetUdpPort(), FALSE);
-  m_FullSrcPath.SetCheck(gSettings.GetFullSrcPath() ? BST_CHECKED : BST_UNCHECKED);
-  m_FullFnName.SetCheck(gSettings.GetFullFnName() ? BST_CHECKED : BST_UNCHECKED);
+  m_FullSrcPath.SetCheck(gSettings.FullSrcPath() ? BST_CHECKED : BST_UNCHECKED);
+  m_FullFnName.SetCheck(gSettings.FullFnName() ? BST_CHECKED : BST_UNCHECKED);
+  m_ShowInQt.SetCheck(gSettings.ShowInQt() ? BST_CHECKED : BST_UNCHECKED);
   CenterWindow(GetParent());
   return TRUE;
 }
@@ -77,9 +79,14 @@ LRESULT DlgSettings::OnCloseCmd(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/
   if (wID == IDOK)
   {
     gSettings.SetUIFont(m_FaceName, m_lfWeight, m_FontSize);
-    gSettings.SetUdpPort(GetDlgItemInt(IDC_EDIT_PORT));
-    gSettings.SetFullSrcPath(m_FullSrcPath.GetCheck());
-	gSettings.SetFullFnName(m_FullFnName.GetCheck());
+    gSettings.FullSrcPath(m_FullSrcPath.GetCheck());
+	gSettings.FullFnName(m_FullFnName.GetCheck());
+    gSettings.ShowInQt(m_ShowInQt.GetCheck());
+
+    CString strQtCreatorPath;
+    m_QtCreatorPath.GetWindowText(strQtCreatorPath);
+    gSettings.SetQtCreatorPath(strQtCreatorPath.GetString());
+
   }
   EndDialog(wID);
   return 0;

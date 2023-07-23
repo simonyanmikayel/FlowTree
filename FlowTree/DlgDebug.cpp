@@ -4,8 +4,8 @@
 #define COL_LEN_CHK 70
 #define COL_LEN_CMB 100
 #define COL_FN_NAME "Part of function name"
-#define COL_INCL_FN_CALL "Preserv fn"
-#define COL_APPLY_FILTER "Skip filter"
+#define COL_INCL_FN_CALL "Filter type"
+#define COL_APPLY_FILTER "Ignor filter"
 #define COL_MODULE_NAME "Module name"
 #define COL_SRC_PATH "Part of source path"
 #define COL_INCL_SRC "Excl src"
@@ -22,7 +22,7 @@ LRESULT DlgDebug::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 
 	m_btnApplyFuncFIlters.SetCheck(gSettings.m_DbgSettings.m_applyFuncFilters ? BST_CHECKED : BST_UNCHECKED);
 	m_btnApplyPathFIlters.SetCheck(gSettings.m_DbgSettings.m_applyPathFilters ? BST_CHECKED : BST_UNCHECKED);
-	m_lblFilterName.SetWindowText(gSettings.GetDbgSettingsPath());
+	m_lblFilterName.SetWindowText(gSettings.DbgSettingsPath());
 
 	CRect rc;
 	m_staticFilterList.GetClientRect(&rc);
@@ -32,8 +32,7 @@ LRESULT DlgDebug::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	m_FilterGrid.AddColumn(COL_FN_NAME, m_FilterGrid.GetGridClientWidth() - (COL_LEN_CMB + COL_LEN_CHK), CGridCtrl::EDIT_TEXT);
 	m_FilterGrid.AddColumn(COL_INCL_FN_CALL, COL_LEN_CMB, CGridCtrl::EDIT_DROPDOWNLIST, CGridCtrl::LEFT, VT_I4);
     m_FilterGrid.AddColumnLookup(COL_INCL_FN_CALL, 0, "Skip func");
-    m_FilterGrid.AddColumnLookup(COL_INCL_FN_CALL, 1, "Skip Inners");
-    m_FilterGrid.AddColumnLookup(COL_INCL_FN_CALL, 2, "Skip All");
+	m_FilterGrid.AddColumnLookup(COL_INCL_FN_CALL, 1, "Show func");
 	m_FilterGrid.AddColumn(COL_APPLY_FILTER, COL_LEN_CHK, CGridCtrl::EDIT_CHECK);
 
 	m_staticModulList.GetClientRect(&rc);
@@ -66,7 +65,7 @@ void DlgDebug::FillGrids(DbgSettings &dbgSettings)
 		m_FilterGrid.SetItem(nItem, COL_FN_NAME, arDbgFilter[i].m_szFunc);
         int showFunc = arDbgFilter[i].m_showFunc;
         if (showFunc < 0) showFunc = 0;
-        if (showFunc > 2) showFunc = 2;
+        if (showFunc > 1) showFunc = 1;
         m_FilterGrid.SetItem(nItem, COL_INCL_FN_CALL, showFunc);
 		m_FilterGrid.SetItem(nItem, COL_APPLY_FILTER, arDbgFilter[i].m_skipFilter);
 	}

@@ -18,7 +18,7 @@ typedef enum { LOG_TYPE_ENTER, LOG_TYPE_EXIT, LOG_TYPE_TRACE } ROW_LOG_TYPE;
 #pragma pack(push,1)
 enum THREAD_NODE_CHILD { ROOT_CHILD, LATEST_CHILD };
 enum LOG_DATA_TYPE { ROOT_DATA_TYPE, APP_DATA_TYPE, THREAD_DATA_TYPE, FLOW_DATA_TYPE, TRACE_DATA_TYPE };
-enum LIST_COL { ICON_COL, LINE_NN_COL, NN_COL, APP_COLL, THREAD_COL, TIME_COL, FUNC_COL, CALL_LINE_COL, LOG_COL, MAX_COL };
+enum LIST_COL { NN_COL, APP_COLL, PID_COL, TIME_COL, FUNC_COL, CALL_LINE_COL, LOG_COL, MAX_COL };
 
 struct LOG_NODE
 {
@@ -29,7 +29,6 @@ struct LOG_NODE
     struct {
         WORD hasNewLine : 1;
         WORD hasSearchResult : 1;
-        WORD hiden : 1;
         WORD hasCheckBox : 1;
         WORD checked : 1;
         WORD selected : 1;
@@ -41,6 +40,7 @@ struct LOG_NODE
     BYTE nextChankCounter;
     int cExpanded;
     int line;
+    int lineSearchPos;
     LOG_NODE* nextChankMarker;
     LOG_NODE* nextChank;
     LOG_NODE* firstChild;
@@ -55,7 +55,7 @@ struct LOG_NODE
     bool isFlow() { return data_type == FLOW_DATA_TYPE; }
     bool isTrace() { return data_type == TRACE_DATA_TYPE; }
     bool isInfo() { return isFlow() || isTrace(); }
-    bool isHiden() { return hiden; }
+    bool isChecked() { return checked; }
 
     void CalcLines();
     int GetExpandCount() { return expanded ? cExpanded : 0; }
@@ -108,13 +108,19 @@ struct LOG_NODE
     DWORD64 getCallAddr();
     int   getCallLine();
     CHAR* getTreeText(int* cBuf = NULL, bool extened = true);
-    CHAR* getListText(int* cBuf, LIST_COL col, int iItem = 0);
+    CHAR* getListText(int* cBuf, LIST_COL col);
+    THREAD_NODE* getTrhread();
+    APP_NODE* getApp();
+    ROOT_NODE* getRoot();
     int getTreeImage();
-    LOG_NODE* getSyncNode();
-	APP_NODE* getApp();
+    FLOW_NODE* getSyncNode();
 	char* getFnName(bool forceFullName = false);
     int getFnNameSize(bool forceFullName = false);
     int getTraceText(char* pBuf, int max_cb_trace);
+    bool CheckAll(bool check, bool recursive = false);
+    bool ShowOnlyThis();
+    bool CheckNode(bool check);
+
 };
 
 struct ROOT_NODE : LOG_NODE
@@ -138,7 +144,6 @@ struct THREAD_NODE : LOG_NODE
 	APP_NODE* pAppNode;
 	FLOW_NODE* curentFlow;
     TRACE_NODE* latestTrace;
-	int emptLineColor;
 	int tid;
 	int threadNN;
     char COLOR_BUF[10];
@@ -155,6 +160,7 @@ struct THREAD_NODE : LOG_NODE
         pParent->add_child((LOG_NODE*)pNode);
         curentFlow = pNode;
     }
+    bool isHiden() { return !isChecked() || !pAppNode->isChecked(); }
 };
 
 struct INFO_NODE : LOG_NODE
@@ -197,7 +203,7 @@ struct TRACE_CHANK
 
 struct TRACE_NODE : INFO_NODE
 {
-    BYTE color;
+    int MsgType;
     int cb_trace;
 	int cb_fn_name;
 	int GetCallLine() { return callLine; }

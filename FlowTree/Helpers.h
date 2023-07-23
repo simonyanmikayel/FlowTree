@@ -12,6 +12,8 @@ extern FLOW_NODE*  gSyncronizedNode;
 
 static const int ICON_LEN = 16;
 static const int ICON_OFFSET = 16 + 4;
+static const int TEXT_MARGIN = 8;
+static const int INFO_TEXT_MARGIN = 4;
 enum MENU_ICON { MENU_ICON_NON = -1, MENU_ICON_SYNC, MENU_ICON_FUNC_IN_STUDIO, MENU_ICON_CALL_IN_STUDIO, MENU_ICON_MAX};
 namespace Helpers
 {
@@ -28,6 +30,7 @@ namespace Helpers
   void AddCommonMenu(LOG_NODE* pNode, HMENU hMenu, int& cMenu);
   void AddMenu(HMENU hMenu, int& cMenu, int ID_MENU, LPCTCH str, bool disable = false, MENU_ICON ID_ICON = MENU_ICON_NON);
   void SetMenuIcon(HMENU hMenu, UINT item, MENU_ICON icon);
+  void UpdateStatusBar();
   // convert UTF-8 string to wstring
   std::wstring utf8_to_wstring(const std::string& str);
   // convert wstring to UTF-8 string

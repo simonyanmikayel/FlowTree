@@ -163,8 +163,21 @@ void ServerThread::Work(LPVOID pWorkParam)
 				}
 				modules.clear();
 				CmdInfoSize cmd;
-				std::vector<DbgModule>& arDbgModules = gSettings.m_DbgSettings.m_arDbgModules;
+				std::vector<DbgModule> arDbgModules = gSettings.m_DbgSettings.m_arDbgModules;
 				cmd.infoSize = (DWORD)arDbgModules.size();
+				if (cmd.infoSize == 0)
+				{
+					// use module name from cmdStart
+					DbgModule dbgModule;
+					char* szDbgModName = strrchr(cmdStart.szAppName, '\\');
+					if (szDbgModName)
+						szDbgModName++;
+					else
+						szDbgModName = cmdStart.szAppName;
+					strcpy_s(dbgModule.m_szModul, szDbgModName);
+					arDbgModules.push_back(dbgModule);
+					cmd.infoSize++;
+				}
 				if (!(res = Send(&cmd, sizeof(cmd))))
 				{
 					IpcErr(TEXT("Failed to send CmdInfoSize"));

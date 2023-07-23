@@ -26,7 +26,7 @@ LRESULT CBackTraceView::OnCreate(LPCREATESTRUCT lpcs)
   m_wndCallStackView.Create(m_wndVertSplitter, rcDefault, NULL, dwStyle, 0);
 
   m_wndVertSplitter.SetSplitterPanes(m_wndCallStackView, m_wndCallFuncView);
-  m_wndVertSplitter.SetSplitterPosPct(max(10, min(90, gSettings.GetStackSplitterPos())), false);
+  m_wndVertSplitter.SetSplitterPosPct(max(10, min(90, gSettings.StackSplitterPos())), false);
 
   ApplySettings(true);
 
@@ -37,8 +37,8 @@ void CBackTraceView::ApplySettings(bool fontChanged)
 {
   if (fontChanged)
   {
-    m_wndCallFuncView.SetFont(gSettings.GetFont());
-    m_wndCallStackView.SetFont(gSettings.GetFont());
+    m_wndCallFuncView.SetFont(gSettings.Font());
+    m_wndCallStackView.SetFont(gSettings.Font());
   }
 }
 
