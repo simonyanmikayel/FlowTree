@@ -34,6 +34,7 @@
     <ClInclude Include="GDI.h" />
     <ClInclude Include="LogListFrame.h" />
     <ClInclude Include="LogListInfo.h" />
+    <ClInclude Include="FileMap.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AboutDlg.cpp" />

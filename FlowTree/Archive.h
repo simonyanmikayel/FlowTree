@@ -60,7 +60,8 @@ public:
     static DWORD getArchiveNumber() { return archiveNumber; }
     size_t UsedMemory();
 	DWORD TickCount() { return tickCount; }
-    BYTE getNewBookmarkNumber() { return ++bookmarkNumber; }
+	void TickCount(DWORD dw) { tickCount = dw; }
+	BYTE getNewBookmarkNumber() { return ++bookmarkNumber; }
     BYTE resteBookmarkNumber() { return bookmarkNumber = 0; }
 
 private:

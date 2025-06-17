@@ -29,11 +29,14 @@ public:
   void SetFontLabel();
   CStatic m_lblFont;
   CEdit m_QtCreatorPath;
+  CEdit m_CLionPath;
   CButton m_btnFont;
   CButton m_btnReset;
   CButton m_FullSrcPath;
   CButton m_FullFnName;
-  CButton m_ShowInQt;
+  CButton m_DissableBufferization;
+  CButton m_UseTcpForLog;
+  //CButton m_IdeType;
 
   DWORD     m_FontSize;
   CHAR     m_FaceName[LF_FACESIZE];

@@ -95,11 +95,13 @@ private:
 #define MAX_SRC_ITEM_BUF MAX_PATH + 30
 struct DbgSource
 {
-	char m_szSrc[MAX_PATH];
-	int  m_exclSrc;
+	char m_szSrc[MAX_FILTER_ITEM_BUF - 20];
+	int  m_showSrc = 0;
+	int  m_Priority = 0;
+	int  m_skipSrc = 0;
 	void EncodeText(char *szItem) {
 		m_szSrc[_countof(m_szSrc) - 1] = 0;
-		sprintf_s(szItem, MAX_PATH - 1, "%s,%d", m_szSrc, m_exclSrc);
+		sprintf_s(szItem, MAX_FILTER_ITEM_BUF - 1, "%s,%d,%d,%d", m_szSrc, m_showSrc, m_Priority, m_skipSrc);
 	}
 	bool DecodeText(const char *szItem) {
 		ZeroMemory(this, sizeof(*this));
@@ -110,7 +112,15 @@ struct DbgSource
 			token = strtok_s(NULL, ",", &next_token);
 		}
 		if (token) {
-			m_exclSrc = atoi(token);
+			m_showSrc = atoi(token);
+			token = strtok_s(NULL, ",", &next_token);
+		}
+		if (token) {
+			m_Priority = atoi(token);
+			token = strtok_s(NULL, ",", &next_token);
+		}
+		if (token) {
+			m_skipSrc = atoi(token);
 		}
 		return token != nullptr;
 	}
@@ -118,11 +128,12 @@ struct DbgSource
 struct DbgFilter
 {
 	char m_szFunc[MAX_FILTER_ITEM_BUF - 20];
-	int  m_showFunc;
-	int  m_skipFilter;
+	int  m_showFunc = 0;
+	int  m_Priority = 0;
+	int  m_skipFilter = 0;
 	void EncodeText(char *szItem) { 
 		m_szFunc[_countof(m_szFunc) - 1] = 0;
-		sprintf_s(szItem, MAX_FILTER_ITEM_BUF - 1, "%s,%d,%d", m_szFunc, m_showFunc, m_skipFilter);
+		sprintf_s(szItem, MAX_FILTER_ITEM_BUF - 1, "%s,%d,%d,%d", m_szFunc, m_showFunc, m_Priority, m_skipFilter);
 	}
 	bool DecodeText(const char *szItem) { 
 		ZeroMemory(this, sizeof(*this));
@@ -137,25 +148,39 @@ struct DbgFilter
 			token = strtok_s(NULL, ",", &next_token);
 		}
 		if (token) {
+			m_Priority = atoi(token);
+			token = strtok_s(NULL, ",", &next_token);
+		}
+		if (token) {
 			m_skipFilter = atoi(token);
 		}
 		return token != nullptr;
 	}
 };
+
 struct DbgModule
 {
-	char m_szModul[MAX_PATH];
+	char m_szModul[MAX_PATH] = {0};
+	int  m_skipModule = 0;
 	void EncodeText(char *szItem) {
 		m_szModul[_countof(m_szModul) - 1] = 0;
-		sprintf_s(szItem, MAX_MODUL_ITEM_BUF - 1, "%s", m_szModul);
+		sprintf_s(szItem, MAX_MODUL_ITEM_BUF - 1, "%s,%d", m_szModul, m_skipModule);
 	}
 	bool DecodeText(const char *szItem) {
 		ZeroMemory(this, sizeof(*this));
-		strncpy_s(m_szModul, szItem, _TRUNCATE);
-		m_szModul[_countof(m_szModul) - 1] = 0;
-		return true;
+		char* next_token;
+		char* token = strtok_s((char*)szItem, ",", &next_token);
+		if (token) {
+			strncpy_s(m_szModul, token, _TRUNCATE);
+			token = strtok_s(NULL, ",", &next_token);
+		}
+		if (token) {
+			m_skipModule = atoi(token);
+		}
+		return token != nullptr;
 	}
 };
+
 struct DbgSettings
 {
 	int m_applyFuncFilters;
@@ -163,6 +188,12 @@ struct DbgSettings
 	std::vector<DbgFilter> m_arDbgFilter;
 	std::vector<DbgModule> m_arDbgModules;
 	std::vector<DbgSource> m_arDbgSources;
+};
+
+enum class IDE_TYPE {
+	VS,
+	QT,
+	CLion
 };
 
 class CSettings : public CRegKeyExt
@@ -190,10 +221,13 @@ public:
 	DbgSettings m_DbgSettings;
 	bool WriteDbgSettings(char* filePath, DbgSettings& dbgSettings);
 	bool ReadDbgSettings(char* filePath, DbgSettings& dbgSettings);
+	bool ReLoadDbgSettings();
 	void SetDbgSettings(char* filePath, DbgSettings& dbgSettings);
 	char* DbgSettingsPath() { return m_DbgSettingsPath; }
 	void SetQtCreatorPath(const char* filePath);
+	void SetCLionPath(const char* filePath);
 	char* QtCreatorPath() { return m_QtCreatorPath; }
+	char* CLionPath() { return m_CLionPath; }
 
 	static DWORD CSettings::SelectionBkColor() { return RGB(64, 64, 64); }
 	static DWORD CSettings::InfoTextColorNative() { return RGB(0, 0, 0); }
@@ -215,7 +249,9 @@ public:
     PROP_NUM(DWORD, ShowElapsedTime);
 	PROP_NUM(DWORD, FullSrcPath);
 	PROP_NUM(DWORD, FullFnName);
-	PROP_NUM(DWORD, ShowInQt);
+	PROP_NUM(DWORD, DissableBufferization);
+	PROP_NUM(DWORD, UseTcpForLog);
+	PROP_NUM(DWORD, IdeType);
 
     PROP_NUM(int, ColNN);
 	PROP_NUM(int, ColApp);
@@ -237,6 +273,7 @@ private:
     LOGFONT   m_logFont;
 	CHAR      m_DbgSettingsPath[MAX_PATH + 1];
 	CHAR      m_QtCreatorPath[MAX_PATH + 1];
+	CHAR      m_CLionPath[MAX_PATH + 1];
 	HANDLE    m_resourceFonthandle;
 
     void AddDefaultFont();

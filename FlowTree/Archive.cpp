@@ -48,7 +48,6 @@ void Archive::clearArchive()
     curThread = 0;
 	nn = 0;
     bookmarkNumber = 0;
-	tickCount = GetTickCount();
 
 	std::vector<DbgInfo*> arDbgInfo;
 	if (m_rootNode)
@@ -184,7 +183,8 @@ LOG_NODE* Archive::addFlow(THREAD_NODE* pThreadNode, CmdFlow* pCmdFlow)
     pNode->data_type = FLOW_DATA_TYPE;
     pNode->log_type = pCmdFlow->enter ? LOG_TYPE_ENTER : LOG_TYPE_EXIT;
 	pNode->tickCount = pCmdFlow->tickCount;
-	pNode->funcId = pCmdFlow->funcId;
+	pNode->moduleId = pCmdFlow->moduleId;
+    pNode->funcId = pCmdFlow->funcId;
 	pNode->funcAddr = pCmdFlow->funcAddr;
 	pNode->callAddr = pCmdFlow->callAddr;
 	pNode->nn = ++nn;
@@ -255,7 +255,7 @@ LOG_NODE* Archive::addTrace(THREAD_NODE* pThreadNode, CmdTrace *pCmdTrace, int& 
         }
         if (endsWithNewLine && newChank)
             pThreadNode->latestTrace->hasNewLine = 1;
-        if (cb == 0 && pCmdTrace->call_line == pThreadNode->latestTrace->GetCallLine())
+        if (cb == 0 && pCmdTrace->call_line == pThreadNode->latestTrace->getCallLine())
             newChank = true;
     }
 
@@ -278,6 +278,7 @@ LOG_NODE* Archive::addTrace(THREAD_NODE* pThreadNode, CmdTrace *pCmdTrace, int& 
     else
     {
         //add new trace
+        int cb_src_name = pCmdTrace->cb_src_name;
         int cb_fn_name = pCmdTrace->cb_fn_name;
         char* fnName = pCmdTrace->fnName();
         if (fnName[0] == '^')
@@ -298,7 +299,7 @@ LOG_NODE* Archive::addTrace(THREAD_NODE* pThreadNode, CmdTrace *pCmdTrace, int& 
                 break;
             }
         }
-        TRACE_NODE* pNode = (TRACE_NODE*)m_pNodes->Add(sizeof(TRACE_NODE) + cb_fn_name + sizeof(TRACE_CHANK) + cb, true);
+        TRACE_NODE* pNode = (TRACE_NODE*)m_pNodes->Add(sizeof(TRACE_NODE) + cb_src_name + 1 + cb_fn_name + 1 + sizeof(TRACE_CHANK) + cb, true);
         if (!pNode)
             return nullptr;
 
@@ -309,8 +310,10 @@ LOG_NODE* Archive::addTrace(THREAD_NODE* pThreadNode, CmdTrace *pCmdTrace, int& 
 		pNode->SetCallLine(pCmdTrace->call_line);
 		pNode->nn = ++nn;
 
+        pNode->cb_src_name = cb_src_name;
+        memcpy(pNode->tarce_srcName(), pCmdTrace->srcName(), cb_src_name);
         pNode->cb_fn_name = cb_fn_name;
-        memcpy(pNode->fnName(), fnName, cb_fn_name);
+        memcpy(pNode->tarce_fnName(), fnName, cb_fn_name);
 
         TRACE_CHANK* pChank = pNode->getFirestChank();
         pChank->len = cb;
@@ -359,7 +362,7 @@ LOG_NODE* Archive::append(DWORD pid, CmdLog* pLog)
 	{
 		APP_NODE* pAppNode = getApp(pid);
         if (!pAppNode) {
-            ATLASSERT(false);
+            //ATLASSERT(false);
             break;
         }
 		if (pLog->cmd != CMD_FLOW && pLog->cmd != CMD_TRACE) {
@@ -387,7 +390,7 @@ LOG_NODE* Archive::append(DWORD pid, CmdLog* pLog)
 				int prcessed0 = prcessed;
 				int cb_trace0 = pCmdTrace->cb_trace;
                 pNode = addTrace(pThreadNode, pCmdTrace, prcessed);
-				if (prcessed0 >= prcessed && cb_trace0 <= pCmdTrace->cb_trace && prcessed < pCmdTrace->cb_trace)
+                if (prcessed0 >= prcessed && cb_trace0 <= pCmdTrace->cb_trace && prcessed < pCmdTrace->cb_trace)
 				{
 					ATLASSERT(FALSE);
 					break;
@@ -398,7 +401,7 @@ LOG_NODE* Archive::append(DWORD pid, CmdLog* pLog)
 	} while (false);
     unlock();
 
-    ATLASSERT(pNode);
+    //ATLASSERT(pNode);
 	return pNode;
 }
 

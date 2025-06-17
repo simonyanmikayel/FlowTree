@@ -44,10 +44,10 @@ int CBackTraceCallView::getSubItemText(int iItem, int iSubItem, char* buf, int c
   int cb = 0;
   if (iSubItem == BACK_TRACE_FN)
   {
-    cb = min(pNode->getFnNameSize(true), cbBuf);
-    if (cb != 0)
+    char* fnName = pNode->getFnName(true);
+    if (fnName[0])
     {
-      memcpy(buf, pNode->getFnName(true), cb);
+      cb = _sntprintf_s(buf, cbBuf , cbBuf, TEXT("%s"), fnName);
     }
     else
     {
@@ -68,11 +68,7 @@ int CBackTraceCallView::getSubItemText(int iItem, int iSubItem, char* buf, int c
     }
     else
     {
-#ifdef HAVE_CALL_LINE
       const char* txt = ((FLOW_NODE*)pNode)->getCallSrc(gSettings.FullSrcPath());
-#else
-        const char* txt = ((FLOW_NODE*)pNode)->getFuncSrc(gSettings.FullSrcPath());
-#endif
       cb = min((int)strlen(txt), cbBuf);
       memcpy(buf, txt, cb);
     }
@@ -82,17 +78,11 @@ int CBackTraceCallView::getSubItemText(int iItem, int iSubItem, char* buf, int c
     int line = 0;
     if (pNode->isTrace())
     {
-#ifdef HAVE_CALL_LINE
-        line = ((TRACE_NODE*)pNode)->GetCallLine();
-#endif
+        line = ((TRACE_NODE*)pNode)->getCallLine();
     }
     else
     {
-#ifdef HAVE_CALL_LINE
-        line = ((FLOW_NODE*)pNode)->GetCallLine();
-#else
-        line = ((FLOW_NODE*)pNode)->GetFuncLine();
-#endif
+        line = ((FLOW_NODE*)pNode)->getCallLine();
     }
     if (line > 0)
       cb = _snprintf_s(buf, cbBuf, cbBuf, "%d", line);
@@ -112,11 +102,11 @@ void CBackTraceCallView::AddTraceNodes(LOG_NODE* pSelectedNode, FLOW_NODE* pFlow
     {
       if (pListedNode != pSelectedNode && pListedNode->isTrace() && pListedNode->parent == pSelectedNode)
       {
-        int line = ((TRACE_NODE*)pListedNode)->GetCallLine();
+        int line = ((TRACE_NODE*)pListedNode)->getCallLine();
         
         if (line > 0)
         {
-			int callLine = pFlowNode->GetCallLine();
+			int callLine = pFlowNode->getCallLine();
           if ((beforeFlowNode && line <= callLine) || (!beforeFlowNode && line >= callLine))
           {
             nodes[c_nodes] = pListedNode;

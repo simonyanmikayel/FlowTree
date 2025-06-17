@@ -4,6 +4,7 @@
 #include "comdef.h"
 #include "MainFrm.h"
 #include "Settings.h"
+#include "Dbg.h"
 
 namespace Helpers
 {
@@ -40,13 +41,7 @@ namespace Helpers
     }
 
     void ShowInIDE(LOG_NODE* pSelectedNode, bool bShowCallSite)
-    {
-        if (bShowCallSite) {
-#ifndef HAVE_CALL_LINE
-            return;
-#endif
-        }
-        
+    {        
         if (pSelectedNode)
         {
             STARTUPINFO si;
@@ -60,13 +55,8 @@ namespace Helpers
             if (pSelectedNode->isTrace())
             {
                 TRACE_NODE* pTraceNode = (TRACE_NODE*)pSelectedNode;
-                line = pTraceNode->GetCallLine();
-                LOG_NODE* pNode = pTraceNode->getSyncNode();
-                if (pNode->isFlow())
-                {
-                    FLOW_NODE* pFlowNode = (FLOW_NODE*)pNode;
-                    src = pFlowNode->getFuncSrc(true);
-                }
+                src = pTraceNode->getCallSrc(true);
+                line = pTraceNode->getCallLine();
             }
             else if (pSelectedNode->isFlow())
             {
@@ -74,7 +64,7 @@ namespace Helpers
                 if (bShowCallSite)
                 {
                     src = pFlowNode->getCallSrc(true);
-                    line = pFlowNode->GetCallLine();
+                    line = pFlowNode->getCallLine();
                 }
                 else
                 {
@@ -87,14 +77,26 @@ namespace Helpers
             if (line <= 0)
                 line = 1;
 
-            if (gSettings.ShowInQt()) {
+            if (gSettings.IdeType() == (int)IDE_TYPE::QT) {
                 int cbCmd = _sntprintf_s(cmd, max_cmd, max_cmd, "\"%s\" -client \"%s:%d\"", gSettings.QtCreatorPath(), src, line);
                 PROCESS_INFORMATION pi;
-                if (!CreateProcessA(NULL, cmd, NULL, NULL, FALSE,
-                    NORMAL_PRIORITY_CLASS, NULL, NULL, &si, &pi))
+                if (!CreateProcessA(NULL, cmd, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &si, &pi))
                 {
                     Helpers::SysErrMessageBox("Failed to run Qt creator at path %s", gSettings.QtCreatorPath());
                 }
+                CloseHandle(pi.hProcess);
+                CloseHandle(pi.hThread);
+            }
+            else if (gSettings.IdeType() == (int)IDE_TYPE::CLion) {
+                PROCESS_INFORMATION pi;
+                //https://www.jetbrains.com/help/clion/working-with-the-ide-features-from-command-line.html
+                //https://www.jetbrains.com/help/clion/opening-files-from-command-line.html
+                _sntprintf_s(cmd, max_cmd, max_cmd, "\"%s\" --line %d \"%s\"", gSettings.CLionPath(), line, src);
+                if (!CreateProcess(NULL, cmd, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &si, &pi))
+                {
+                    Helpers::SysErrMessageBox("Failed to run CLion creator at path %s", gSettings.CLionPath());
+                }
+                ;
                 CloseHandle(pi.hProcess);
                 CloseHandle(pi.hThread);
             }
@@ -108,6 +110,8 @@ namespace Helpers
                         *srcPos = '*';
                     srcPos++;
                 }
+                si.dwFlags = STARTF_USESHOWWINDOW;  // Use the wShowWindow member.
+                si.wShowWindow = SW_HIDE;           // Hide the console window.
                 PROCESS_INFORMATION pi;
                 if (!CreateProcessA(DteAppName(), cmd, NULL, NULL, FALSE,
                     NORMAL_PRIORITY_CLASS, NULL, NULL, &si, &pi))
@@ -386,16 +390,10 @@ namespace Helpers
         bool disable;
         disable = (pNode == NULL || !pNode->isInfo());
         AddMenu(hMenu, cMenu, ID_SYNC_VIEWES, _T("Synchronize views\tTab"), disable, MENU_ICON_SYNC);
-#ifdef HAVE_CALL_LINE
         disable = (pNode == NULL || !pNode->isInfo());
         AddMenu(hMenu, cMenu, ID_SHOW_CALL_IN_STUDIO, _T("Show Call Line\tCtrl+Click"), disable);
-#endif
 
-#ifdef HAVE_CALL_LINE
         disable = (pNode == NULL || !pNode->isInfo() || pNode->isTrace());
-#else
-        disable = (pNode == NULL || !pNode->isInfo());
-#endif
         AddMenu(hMenu, cMenu, ID_SHOW_FUNC_IN_STUDIO, _T("Show Function\tAlt+Click"), disable);
 
         InsertMenu(hMenu, cMenu++, MF_BYPOSITION | MF_SEPARATOR, 0, _T(""));
@@ -458,6 +456,44 @@ namespace Helpers
     void UpdateStatusBar()
     {
         gMainFrame->UpdateStatusBar();
+    }
+    void UpdateStatusBar(char* str)
+    {
+        gMainFrame->UpdateStatusBar(str);
+    }
+    void ClearLog()
+    {
+        ::SendMessage(hwndMain, WM_COMMAND, ID_CLEAR_ARCHIVE, 0);
+    }
+
+    uint32_t crc32(const std::string& data) {
+        uint32_t crc = 0xFFFFFFFF;
+        for (unsigned char c : data) {
+            crc ^= c;
+            for (int k = 0; k < 8; k++) {
+                if (crc & 1)
+                    crc = (crc >> 1) ^ 0xEDB88320;
+                else
+                    crc = crc >> 1;
+            }
+        }
+        return crc ^ 0xFFFFFFFF;
+    }
+
+    void UpdateDbgLoadStatus() 
+    {
+        static CHAR pBuf[1024];
+        _sntprintf_s(pBuf, _countof(pBuf) - 1, _countof(pBuf) -1, TEXT("Loading module %d/%d %d %d"), gDbgLoadStatus.cModulesTotal, gDbgLoadStatus.cModulesLoading, gDbgLoadStatus.cFunctionsLoaded, gDbgLoadStatus.cSettingsChecked);
+        pBuf[_countof(pBuf) - 1] = 0;
+        gMainFrame->UpdateStatusBar(pBuf);
+    }
+    void BlockLogStatus(bool b)
+    {
+        gMainFrame->BlockLogStatus(b);
+    }
+    bool BlockLogStatus()
+    {
+        return gMainFrame->BlockLogStatus();
     }
 };
 

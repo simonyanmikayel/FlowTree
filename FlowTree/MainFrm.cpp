@@ -27,6 +27,10 @@ CMainFrame::CMainFrame()
     , m_tree(m_view.tree())
     , m_backTrace(m_view.backTrace())
 {
+#ifdef USE_PIPE
+    m_pServerThread = new ServerThread();
+    m_pServerThread->StartWork();
+#endif //USE_PIPE
 }
 
 BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
@@ -45,8 +49,13 @@ BOOL CMainFrame::OnIdle()
     UIEnable(ID_SEARCH_LAST, searchInfo.total); //  && (searchInfo.cur + 1 != searchInfo.total)
     UIEnable(ID_SEARCH_REFRESH, 1);
     UIEnable(ID_SEARCH_CLEAR, 1);
-	UIEnable(ID_VIEW_PAUSERECORDING, m_pServerThread != NULL);
-	UIEnable(ID_VIEW_RESUMERECORDIG, m_pServerThread == NULL);
+#ifdef USE_PIPE
+    UIEnable(ID_VIEW_PAUSERECORDING, !m_pServerThread->Paused());
+    UIEnable(ID_VIEW_RESUMERECORDIG, m_pServerThread->Paused());
+#else
+    UIEnable(ID_VIEW_PAUSERECORDING, m_pServerThread != NULL);
+    UIEnable(ID_VIEW_RESUMERECORDIG, m_pServerThread == NULL);
+#endif //USE_PIPE
 	UIEnable(ID_EDIT_SELECTALL, !gArchive.IsEmpty());
     UIEnable(ID_EDIT_FIND32798, !gArchive.IsEmpty());
     UIEnable(ID_EDIT_COPY, m_list.HasSelection() || ::GetFocus() == m_tree.m_hWnd);
@@ -252,6 +261,10 @@ LRESULT CMainFrame::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*
     ATLASSERT(pLoop != NULL);
     pLoop->RemoveMessageFilter(this);
     pLoop->RemoveIdleHandler(this);
+#ifdef USE_PIPE
+    //m_pServerThread->StopWork();    
+    //delete m_pServerThread;
+#endif //USE_PIPE
 
     bHandled = FALSE;
     return 1;
@@ -284,10 +297,17 @@ LRESULT CMainFrame::OnTimer(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOO
 {
     if (wParam == TIMER_DATA_REFRESH)
     {
-		if (m_pServerThread && m_pServerThread->IsWorking())
-		{
-			RefreshLog(false);
-		}
+#ifdef USE_PIPE
+        if (!m_pServerThread->Paused())
+        {
+            RefreshLog(false);
+        }
+#else
+        if (m_pServerThread && m_pServerThread->IsWorking())
+        {
+            RefreshLog(false);
+        }
+#endif //USE_PIPE
 	}
     return 0;
 }
@@ -295,14 +315,24 @@ LRESULT CMainFrame::OnTimer(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOO
 void CMainFrame::StartLogging()
 {
     SetTimer(TIMER_DATA_REFRESH, TIMER_DATA_REFRESH_INTERVAL);
-	m_pServerThread = new ServerThread();
-	m_pServerThread->StartWork();
+#ifdef USE_PIPE
+    m_pServerThread->Pause(false);
+#else
+    m_pServerThread = new ServerThread();
+    m_pServerThread->StartWork();
+#endif //USE_PIPE
 	RefreshLog(true);
 }
 
 void CMainFrame::StopLogging()
 {
+    gDbgLoadStatus.stop = true;
 	KillTimer(TIMER_DATA_REFRESH);
+#ifdef USE_PIPE
+    m_pServerThread->Pause(true);
+    searchInfo.ClearSearchResults();
+    ShowSearchResult();
+#else
     if (m_pServerThread)
     {
         m_pServerThread->StopWork();
@@ -311,6 +341,7 @@ void CMainFrame::StopLogging()
         searchInfo.ClearSearchResults();
         ShowSearchResult();
     }
+#endif //USE_PIPE
 	RefreshLog(true);
 	gArchive.onPaused();
 }
@@ -356,6 +387,12 @@ LRESULT CMainFrame::OnViewDbgSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /
 	if (IDOK == dlg.DoModal())
 		m_view.ApplySettings(false);
 	return 0;
+}
+
+LRESULT CMainFrame::OnViewReloadDbgSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+{
+    gSettings.ReLoadDbgSettings();
+    return 0;
 }
 
 LRESULT CMainFrame::OnViewDetailes(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
@@ -554,13 +591,25 @@ LRESULT CMainFrame::OnClearLog(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
     return 0;
 }
 
-void CMainFrame::ClearLog()
+LRESULT CMainFrame::OnClearArcive(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
-	StopLogging();
+    ClearArchive();
+    return 0;
+}
+
+void CMainFrame::ClearArchive()
+{
 	gArchive.clearArchive();
 	m_view.ClearLog();
     searchInfo.ClearSearchResults();
     ShowSearchResult();
+}
+
+void CMainFrame::ClearLog()
+{
+    gDbgLoadStatus.stop = true;
+	StopLogging();
+    ClearArchive();
 	StartLogging();
 }
 
@@ -874,6 +923,8 @@ LRESULT CMainFrame::OnUpdateStatus(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 void CMainFrame::UpdateStatusBar()
 {
     static CHAR pBuf[1024];
+    if (m_BlockLogStatus)
+        return;
 
 #ifdef _STATUS_BAR_PARTS    
     _sntprintf_s(pBuf, _countof(pBuf), _countof(pBuf) - 1, TEXT("Log: %s"), Helpers::str_format_int_grouped(m_tree.GetRecCount()));
@@ -893,4 +944,9 @@ void CMainFrame::UpdateStatusBar()
 	
     ::PostMessage(m_hWndStatusBar, SB_SETTEXT, 0, (LPARAM)pBuf);
 #endif
+}
+
+void CMainFrame::UpdateStatusBar(char* str)
+{
+    ::PostMessage(m_hWndStatusBar, SB_SETTEXT, 0, (LPARAM)str);
 }

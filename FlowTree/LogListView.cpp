@@ -1337,7 +1337,8 @@ CHAR* CLogListView::getText(LOG_NODE* pNode, int* cBuf, bool onlyTraces, int* cI
 				c = MAX_BUF_LEN - cb;
 			memcpy(buf.p + cb, p, c);
 			cb += c;
-			if (i < m_cActualColumns - 1)
+			buf.p[cb] = 0;
+			if (c && i < m_cActualColumns - 1)
 			{
 				memcpy(buf.p + cb, " ", 1);
 				cb += 1;

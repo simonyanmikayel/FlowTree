@@ -157,4 +157,19 @@ typedef std::string tstring;
 //////////////////////////////////////////////////////////////////////////////
 #define SHOW_CHILD_COUNT
 //#define _AUTO_TEST
-//#define HAVE_CALL_LINE
+
+#define USE_MEM 1
+#define USE_PIPE 1
+//#define USE_SOCK 1
+
+#ifdef USE_SOCK
+#undef USE_PIPE
+#undef USE_MEM
+#endif
+
+#ifdef USE_MEM
+#ifndef USE_PIPE
+#define USE_PIPE 1
+#endif
+#endif
+

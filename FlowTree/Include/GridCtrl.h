@@ -772,7 +772,7 @@ protected:
 					return;
 				}
 			}
-			SetCurSel(-1);
+			SetCurSel(0);
 		}
 
 		void ResetContent() {

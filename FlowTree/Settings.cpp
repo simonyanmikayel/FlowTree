@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "Settings.h"
 #include "resource.h"
+#include "helpers.h"
 #include <SimpleIni.h>
 
 CSettings gSettings;
@@ -16,6 +17,7 @@ LPCTSTR STR_APP_REG_VAL_SEARCH_LIST = _T("SearchList");
 
 LPCTSTR STR_APP_REG_VAL_DbgSettingsPath = _T("DbgSettingsPath");
 LPCTSTR STR_APP_REG_VAL_QtCreatorPath = _T("QtCreatorPath");
+LPCTSTR STR_APP_REG_VAL_CLionPath = _T("CLionPath");
 
 #define DefFontSize 11
 
@@ -32,7 +34,9 @@ CSettings::CSettings() :
 	, m_ShowElapsedTime(this, _T("ShowElapsedTime"), FALSE)
 	, m_FullSrcPath(this, _T("FullSrcPath"), FALSE)
 	, m_FullFnName(this, _T("FullFnName"), FALSE)
-	, m_ShowInQt(this, _T("ShowInQt"), TRUE)
+	, m_DissableBufferization(this, _T("DissableBufferization"), FALSE)
+	, m_UseTcpForLog(this, _T("UseTcpForLog"), FALSE)
+	, m_IdeType(this, _T("IdeType"), 0)
 	, m_ColNN(this, _T("ColNN"), 0)
 	, m_ColApp(this, _T("ColApp"), 0)
 	, m_ColPID(this, _T("ColPID"), 0)
@@ -55,6 +59,7 @@ CSettings::CSettings() :
 	Read(STR_APP_REG_VAL_QtCreatorPath, m_QtCreatorPath, MAX_PATH, "");
 	if (!m_QtCreatorPath[0])
 		SetQtCreatorPath("C:\\Qt\\Tools\\QtCreator\\bin\\qtcreator.exe");
+	Read(STR_APP_REG_VAL_CLionPath, m_CLionPath, MAX_PATH, "");
 }
 
 bool CSettings::CheckUIFont(HDC hdc)
@@ -103,6 +108,12 @@ void CSettings::SetQtCreatorPath(const char* filePath)
 	Write(STR_APP_REG_VAL_QtCreatorPath, filePath);
 }
 
+void CSettings::SetCLionPath(const char* filePath)
+{
+	strcpy_s(m_CLionPath, filePath);
+	Write(STR_APP_REG_VAL_CLionPath, filePath);
+}
+
 bool CSettings::WriteDbgSettings(char* FilterPath, DbgSettings& dbgSettings)
 {
 	CSimpleIniA ini(false, true, false);
@@ -117,7 +128,7 @@ bool CSettings::WriteDbgSettings(char* FilterPath, DbgSettings& dbgSettings)
 	}
 	for (size_t i = 0; i < dbgSettings.m_arDbgSources.size(); i++)
 	{
-		char szSrcValue[MAX_SRC_ITEM_BUF];
+		char szSrcValue[MAX_FILTER_ITEM_BUF];
 		dbgSettings.m_arDbgSources[i].EncodeText(szSrcValue);
 		ini.SetValue("Sources", "s", szSrcValue);
 	}
@@ -129,6 +140,18 @@ bool CSettings::WriteDbgSettings(char* FilterPath, DbgSettings& dbgSettings)
 	}
 
 	return SI_OK == ini.SaveFile(FilterPath);
+}
+
+bool CSettings::ReLoadDbgSettings()
+{
+	if (!m_DbgSettingsPath[0])
+		return false;
+	if (!ReadDbgSettings(m_DbgSettingsPath, m_DbgSettings))
+	{
+		::MessageBox(hwndMain, TEXT("Could not reload debugger settings"), TEXT("Flow Trace Error"), MB_OK | MB_ICONEXCLAMATION);
+		return false;
+	}
+	return true;
 }
 
 bool CSettings::ReadDbgSettings(char* FilterPath, DbgSettings& dbgSettings)

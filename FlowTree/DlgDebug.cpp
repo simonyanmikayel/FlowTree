@@ -1,14 +1,23 @@
 #include "stdafx.h"
 #include "DlgDebug.h"
 
-#define COL_LEN_CHK 70
-#define COL_LEN_CMB 100
+#define COL_LEN_LEVEL 50
+#define COL_LEN_CMB 80
+#define COL_LEN_IGNORE 65
+
 #define COL_FN_NAME "Part of function name"
-#define COL_INCL_FN_CALL "Filter type"
-#define COL_APPLY_FILTER "Ignor filter"
+#define COL_FN_NCL "Filter"
+#define COL_FN_LEVEL "Level"
+#define COL_FN_IGNORE "Ignore"
+
 #define COL_MODULE_NAME "Module name"
+#define COL_MODULE_IGNORE "Ignore"
+
 #define COL_SRC_PATH "Part of source path"
-#define COL_INCL_SRC "Excl src"
+#define COL_SRC_INCL "Filter"
+#define COL_SRC_LEVEL "Level"
+#define COL_SRC_IGNORE "Ignore"
+//#define COL_SRC_INCL "Excl src"
 
 LRESULT DlgDebug::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 {
@@ -29,26 +38,43 @@ LRESULT DlgDebug::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	m_FilterGrid.Create(m_staticFilterList.m_hWnd, rc, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, WS_EX_CLIENTEDGE, IDC_FITER_GRID);
 	m_FilterGrid.SetListener(this);
 	m_FilterGrid.SetExtendedGridStyle(GS_EX_CONTEXTMENU);
-	m_FilterGrid.AddColumn(COL_FN_NAME, m_FilterGrid.GetGridClientWidth() - (COL_LEN_CMB + COL_LEN_CHK), CGridCtrl::EDIT_TEXT);
-	m_FilterGrid.AddColumn(COL_INCL_FN_CALL, COL_LEN_CMB, CGridCtrl::EDIT_DROPDOWNLIST, CGridCtrl::LEFT, VT_I4);
-    m_FilterGrid.AddColumnLookup(COL_INCL_FN_CALL, 0, "Skip func");
-	m_FilterGrid.AddColumnLookup(COL_INCL_FN_CALL, 1, "Show func");
-	m_FilterGrid.AddColumn(COL_APPLY_FILTER, COL_LEN_CHK, CGridCtrl::EDIT_CHECK);
+	m_FilterGrid.AddColumn(COL_FN_NAME, m_FilterGrid.GetGridClientWidth() - COL_LEN_CMB - COL_LEN_LEVEL - COL_LEN_IGNORE, CGridCtrl::EDIT_TEXT);
+	m_FilterGrid.AddColumn(COL_FN_NCL, COL_LEN_CMB, CGridCtrl::EDIT_DROPDOWNLIST, CGridCtrl::LEFT, VT_I4);
+    m_FilterGrid.AddColumnLookup(COL_FN_NCL, 0, "Skip");
+	m_FilterGrid.AddColumnLookup(COL_FN_NCL, 1, "Show");
+	m_FilterGrid.AddColumnLookup(COL_FN_NCL, 2, "Hide");
+	m_FilterGrid.AddColumnLookup(COL_FN_NCL, 3, "Expand");
+	m_FilterGrid.AddColumn(COL_FN_LEVEL, COL_LEN_LEVEL, CGridCtrl::EDIT_DROPDOWNLIST, CGridCtrl::LEFT, VT_I4);
+	for (char i = 0; i < 10; i++) {
+		char ch[2] = { '0' + i, 0 };
+		m_FilterGrid.AddColumnLookup(COL_FN_LEVEL, i, ch);
+	}
+	m_FilterGrid.AddColumn(COL_FN_IGNORE, COL_LEN_IGNORE, CGridCtrl::EDIT_CHECK);
 
 	m_staticModulList.GetClientRect(&rc);
 	m_ModulGrid.Create(m_staticModulList.m_hWnd, rc, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, WS_EX_CLIENTEDGE, IDC_FITER_GRID);
 	m_ModulGrid.SetListener(this);
 	m_ModulGrid.SetExtendedGridStyle(GS_EX_CONTEXTMENU);
 	m_ModulGrid.GetClientRect(&rc);
-	m_ModulGrid.AddColumn(COL_MODULE_NAME, m_ModulGrid.GetGridClientWidth(), CGridCtrl::EDIT_TEXT);
+	m_ModulGrid.AddColumn(COL_MODULE_NAME, m_ModulGrid.GetGridClientWidth() - COL_LEN_IGNORE, CGridCtrl::EDIT_TEXT);
+	m_ModulGrid.AddColumn(COL_MODULE_IGNORE, COL_LEN_IGNORE, CGridCtrl::EDIT_CHECK);
 
 	m_staticSrcList.GetClientRect(&rc);
 	m_SrcGrid.Create(m_staticSrcList.m_hWnd, rc, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, WS_EX_CLIENTEDGE, IDC_FITER_GRID);
 	m_SrcGrid.SetListener(this);
 	m_SrcGrid.SetExtendedGridStyle(GS_EX_CONTEXTMENU);
-	m_SrcGrid.AddColumn(COL_SRC_PATH, m_SrcGrid.GetGridClientWidth() - (1 * COL_LEN_CHK), CGridCtrl::EDIT_TEXT);
-	m_SrcGrid.AddColumn(COL_INCL_SRC, COL_LEN_CHK, CGridCtrl::EDIT_CHECK);
-	
+	m_SrcGrid.AddColumn(COL_SRC_PATH, m_SrcGrid.GetGridClientWidth() - COL_LEN_CMB - COL_LEN_LEVEL - COL_LEN_IGNORE, CGridCtrl::EDIT_TEXT);
+	m_SrcGrid.AddColumn(COL_SRC_INCL, COL_LEN_CMB, CGridCtrl::EDIT_DROPDOWNLIST, CGridCtrl::LEFT, VT_I4);
+	m_SrcGrid.AddColumnLookup(COL_SRC_INCL, 0, "Skip");
+	m_SrcGrid.AddColumnLookup(COL_SRC_INCL, 1, "Show");
+	m_SrcGrid.AddColumnLookup(COL_SRC_INCL, 2, "Hide");
+	m_SrcGrid.AddColumn(COL_SRC_LEVEL, COL_LEN_LEVEL, CGridCtrl::EDIT_DROPDOWNLIST, CGridCtrl::LEFT, VT_I4);
+	for (char i = 0; i < 10; i++) {
+		char ch[2] = { '0' + i, 0}; 
+		m_SrcGrid.AddColumnLookup(COL_SRC_LEVEL, i, ch);
+	}
+	m_SrcGrid.AddColumn(COL_SRC_IGNORE, COL_LEN_IGNORE, CGridCtrl::EDIT_CHECK);
+
 	FillGrids(gSettings.m_DbgSettings);
 
 	return TRUE;
@@ -65,9 +91,10 @@ void DlgDebug::FillGrids(DbgSettings &dbgSettings)
 		m_FilterGrid.SetItem(nItem, COL_FN_NAME, arDbgFilter[i].m_szFunc);
         int showFunc = arDbgFilter[i].m_showFunc;
         if (showFunc < 0) showFunc = 0;
-        if (showFunc > 1) showFunc = 1;
-        m_FilterGrid.SetItem(nItem, COL_INCL_FN_CALL, showFunc);
-		m_FilterGrid.SetItem(nItem, COL_APPLY_FILTER, arDbgFilter[i].m_skipFilter);
+        if (showFunc > 3) showFunc = 3;
+        m_FilterGrid.SetItem(nItem, COL_FN_NCL, showFunc);
+		m_FilterGrid.SetItem(nItem, COL_FN_LEVEL, arDbgFilter[i].m_Priority);
+		m_FilterGrid.SetItem(nItem, COL_FN_IGNORE, arDbgFilter[i].m_skipFilter);
 	}
 	m_FilterGrid.SetRedraw(TRUE);
 
@@ -78,17 +105,24 @@ void DlgDebug::FillGrids(DbgSettings &dbgSettings)
 	{
 		long nItem = m_SrcGrid.AddRow();
 		m_SrcGrid.SetItem(nItem, COL_SRC_PATH, arDbgSourcer[i].m_szSrc);
-		m_SrcGrid.SetItem(nItem, COL_INCL_SRC, arDbgSourcer[i].m_exclSrc);
-	} 
+
+		int showSrc = arDbgSourcer[i].m_showSrc;
+		if (showSrc < 0) showSrc = 0;
+		if (showSrc > 2) showSrc = 2;
+		m_SrcGrid.SetItem(nItem, COL_SRC_INCL, showSrc);
+		m_SrcGrid.SetItem(nItem, COL_SRC_LEVEL, arDbgSourcer[i].m_Priority);
+		m_SrcGrid.SetItem(nItem, COL_SRC_IGNORE, arDbgSourcer[i].m_skipSrc);
+	}
 	m_SrcGrid.SetRedraw(TRUE);
 
-	std::vector<DbgModule>& arDbgModuler = dbgSettings.m_arDbgModules;
+	std::vector<DbgModule>& arDbgModule = dbgSettings.m_arDbgModules;
 	m_ModulGrid.SetRedraw(FALSE);
 	m_ModulGrid.DeleteAllItems();
-	for (size_t i = 0; i < arDbgModuler.size(); i++)
+	for (size_t i = 0; i < arDbgModule.size(); i++)
 	{
 		long nItem = m_ModulGrid.AddRow();
-		m_ModulGrid.SetItem(nItem, COL_MODULE_NAME, arDbgModuler[i].m_szModul);
+		m_ModulGrid.SetItem(nItem, COL_MODULE_NAME, arDbgModule[i].m_szModul);
+		m_ModulGrid.SetItem(nItem, COL_MODULE_IGNORE, arDbgModule[i].m_skipModule);
 	}
 	m_ModulGrid.SetRedraw(TRUE);
 }
@@ -101,17 +135,23 @@ bool DlgDebug::WriteDbgSettings(char* szFilterPath, DbgSettings &dbgSettings)
 	int count = m_FilterGrid.GetRowCount();
 	for (int i = 0; i < count; i++)
 	{
-		_variant_t vtFnName = m_FilterGrid.GetItem(i, COL_FN_NAME);
-		if (vtFnName.vt == VT_BSTR && vtFnName.bstrVal)
+		_variant_t vt = m_FilterGrid.GetItem(i, COL_FN_NAME);
+		if (vt.vt == VT_BSTR && vt.bstrVal)
 		{
-			char* szFnName = _com_util::ConvertBSTRToString(vtFnName.bstrVal);
+			char* szFnName = _com_util::ConvertBSTRToString(vt.bstrVal);
 			DbgFilter dbgFilter;
 			strncpy_s(dbgFilter.m_szFunc, szFnName, _countof(dbgFilter.m_szFunc) - 1);
 			dbgFilter.m_szFunc[_countof(dbgFilter.m_szFunc) - 1] = 0;
-			_variant_t vtInclFn = m_FilterGrid.GetItem(i, COL_INCL_FN_CALL);
-			dbgFilter.m_showFunc = (long)vtInclFn;
-			_variant_t vtApply = m_FilterGrid.GetItem(i, COL_APPLY_FILTER);
-			dbgFilter.m_skipFilter = vtApply.pcVal[0] != '0';
+
+			vt = m_FilterGrid.GetItem(i, COL_FN_NCL);
+			dbgFilter.m_showFunc = (long)vt;
+
+			vt = m_FilterGrid.GetItem(i, COL_FN_LEVEL);
+			dbgFilter.m_Priority = (long)vt;
+
+			vt = m_FilterGrid.GetItem(i, COL_FN_IGNORE);
+			dbgFilter.m_skipFilter = vt.pcVal[0] != '0';
+
 			dbgSettings.m_arDbgFilter.push_back(dbgFilter);
 			delete szFnName;
 		}
@@ -119,31 +159,45 @@ bool DlgDebug::WriteDbgSettings(char* szFilterPath, DbgSettings &dbgSettings)
 	count = m_SrcGrid.GetRowCount();
 	for (int i = 0; i < count; i++)
 	{
-		_variant_t vtSrc = m_SrcGrid.GetItem(i, COL_SRC_PATH);
-		if (vtSrc.vt == VT_BSTR && vtSrc.bstrVal)
+		_variant_t vt = m_SrcGrid.GetItem(i, COL_SRC_PATH);
+		if (vt.vt == VT_BSTR && vt.bstrVal)
 		{
-			char* szSrc = _com_util::ConvertBSTRToString(vtSrc.bstrVal);
+			char* szSrc = _com_util::ConvertBSTRToString(vt.bstrVal);
 			DbgSource dbgSource;
 			strncpy_s(dbgSource.m_szSrc, szSrc, _countof(dbgSource.m_szSrc) - 1);
 			dbgSource.m_szSrc[_countof(dbgSource.m_szSrc) - 1] = 0;
-			_variant_t vtInclSrc = m_SrcGrid.GetItem(i, COL_INCL_SRC);
-			dbgSource.m_exclSrc = vtInclSrc.pcVal[0] != '0';
+
+			vt = m_SrcGrid.GetItem(i, COL_SRC_INCL);
+			dbgSource.m_showSrc = (long)vt;
+
+			vt = m_SrcGrid.GetItem(i, COL_SRC_LEVEL);
+			dbgSource.m_Priority = (long)vt;
+
+			vt = m_FilterGrid.GetItem(i, COL_SRC_IGNORE);
+			dbgSource.m_skipSrc = vt.pcVal[0] != '0';
+			
+
 			dbgSettings.m_arDbgSources.push_back(dbgSource);
 			delete szSrc;
 		}
 	} 
+
 	count = m_ModulGrid.GetRowCount();
 	for (int i = 0; i < count; i++)
 	{
-		_variant_t vtModuleName = m_ModulGrid.GetItem(i, COL_MODULE_NAME);
-		if (vtModuleName.vt == VT_BSTR && vtModuleName.bstrVal)
+		_variant_t vt = m_ModulGrid.GetItem(i, COL_MODULE_NAME);
+		if (vt.vt == VT_BSTR && vt.bstrVal)
 		{
 			DbgModule dbgModule;
-			char* szModul = _com_util::ConvertBSTRToString(vtModuleName.bstrVal);
+			char* szModul = _com_util::ConvertBSTRToString(vt.bstrVal);
 			strncpy_s(dbgModule.m_szModul, szModul, _countof(dbgModule.m_szModul) - 1);
 			dbgModule.m_szModul[_countof(dbgModule.m_szModul) - 1] = 0;
+
+			vt = m_ModulGrid.GetItem(i, COL_MODULE_IGNORE);
+			dbgModule.m_skipModule = vt.pcVal[0] != '0';
+			
 			dbgSettings.m_arDbgModules.push_back(dbgModule);
-            delete szModul;
+			delete szModul;
         }
 	}
 	return gSettings.WriteDbgSettings(szFilterPath, dbgSettings);
@@ -151,16 +205,7 @@ bool DlgDebug::WriteDbgSettings(char* szFilterPath, DbgSettings &dbgSettings)
 
 LRESULT DlgDebug::OnCloseCmd(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
-	if (m_FilterGrid.IsEditing() || m_ModulGrid.IsEditing() || m_SrcGrid.IsEditing())
-	{
-		if (m_FilterGrid.IsEditing())
-			m_FilterGrid.EndEdit(wID != IDOK);
-		else if (m_ModulGrid.IsEditing())
-			m_ModulGrid.EndEdit(wID != IDOK);
-		else
-			m_SrcGrid.EndEdit(wID != IDOK);
-		return 0;
-	}
+	EndEditing(wID != IDOK);
 
 	if (wID == IDOK)
 	{
@@ -189,7 +234,7 @@ LRESULT DlgDebug::OnCloseCmd(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, B
 LRESULT DlgDebug::OnBnClickedButtonOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
 	CFileDialog dlg(TRUE);
-	if (!dlg.DoModal())
+	if (!dlg.DoModal() || !dlg.m_ofn.lpstrFile[0])
 		return 0;
 
 	DbgSettings dbgSettings;
@@ -213,6 +258,8 @@ LRESULT DlgDebug::OnBnClickedButtonsaveAs(WORD /*wNotifyCode*/, WORD /*wID*/, HW
 	if (!dlg.DoModal())
 		return 0;
 
+	EndEditing(false);
+
 	DbgSettings dbgSettings;
 	if (!WriteDbgSettings(dlg.m_ofn.lpstrFile, dbgSettings))
 		return 0;
@@ -220,4 +267,11 @@ LRESULT DlgDebug::OnBnClickedButtonsaveAs(WORD /*wNotifyCode*/, WORD /*wID*/, HW
 	m_lblFilterName.SetWindowText(dlg.m_ofn.lpstrFile);
 
 	return 0;
+}
+
+void DlgDebug::EndEditing(bool abort)
+{
+	m_FilterGrid.EndEdit(abort);
+	m_ModulGrid.EndEdit(abort);
+	m_SrcGrid.EndEdit(abort);
 }

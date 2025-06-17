@@ -64,6 +64,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_STATUS_BAR, OnViewStatusBar)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
 		COMMAND_ID_HANDLER(ID_VIEW_DBG_SETTINGS, OnViewDbgSettings)
+		COMMAND_ID_HANDLER(ID_VIEW_RELOADDEBUGSETTINGS, OnViewReloadDbgSettings)
 		COMMAND_ID_HANDLER(ID_VIEW_DETAILES, OnViewDetailes)
 		COMMAND_ID_HANDLER(ID_VIEW_SETTINGS, OnViewSettings)
 		COMMAND_ID_HANDLER(ID_FILE_SAVE, OnFileSave)
@@ -76,6 +77,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_UPDATE_STATUS, OnUpdateStatus)
 		COMMAND_ID_HANDLER(ID_VIEW_RESUMERECORDIG, OnResumeRecording)
 		COMMAND_ID_HANDLER(ID_VIEW_CLEARLOG, OnClearLog)
+		COMMAND_ID_HANDLER(ID_CLEAR_ARCHIVE, OnClearArcive)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, onCopy)
 		COMMAND_ID_HANDLER(ID_EDIT_SELECTALL, onSelectAll)
 		MESSAGE_HANDLER(WM_INPORT_TASK, OnImportTask);
@@ -125,6 +127,7 @@ public:
 	LRESULT OnViewStatusBar(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnViewDbgSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnViewReloadDbgSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnViewDetailes(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnViewSettings(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFileSave(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -136,6 +139,7 @@ public:
 	LRESULT OnUpdateStatus(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnResumeRecording(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnClearLog(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnClearArcive(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT onCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT onSelectAll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnImportTask(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -161,6 +165,9 @@ public:
 
 	HWND getSearchEdotBox() { return m_searchedit.m_hWnd; }
 	void UpdateStatusBar();
+	void BlockLogStatus(bool b) { m_BlockLogStatus = b; }
+	bool BlockLogStatus() { return m_BlockLogStatus; }
+	void UpdateStatusBar(char* str);
     void LoadSearchList();
     void SaveSearchList();
     void FilterNode(WORD wID);
@@ -174,11 +181,13 @@ private:
 	CEdit             m_searchResult;
 	CComboBox           m_searchbox;
 	CEdit               m_searchedit;
+	bool m_BlockLogStatus = false;
 
     void ShowSearchResult();
     void NavigateToSearch();
 	void StartLogging();
 	void ClearLog();
+	void ClearArchive();
 	void StopLogging();
     void SearchRefresh(bool reset);
     void RefreshLog(bool reset);

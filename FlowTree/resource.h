@@ -65,9 +65,11 @@
 #define IDC_CHECK_SHOW_APP_IP           1026
 #define IDC_CHECK_FULL_FN_NAME2         1026
 #define IDC_CHECK_SHOW_IN_QT            1026
+#define IDC_CHECK_FULL_DISSABLE_BUFFERIZATION 1026
 #define IDC_NN2                         1027
 #define IDC_CHECK_SHOW_APP_IP2          1027
 #define IDC_CHECK_SHOW_ELAPSED_TIME     1027
+#define IDC_CHECK_USETCPFORLOG          1027
 #define IDC_LINE_NN                     1028
 #define IDC_LIST2                       1029
 #define IDC_EDIT_COMMENT                1040
@@ -90,6 +92,11 @@
 #define IDC_STATIC_MODUL_LST            1213
 #define IDC_EDIT_QT_CREATOR_PATH        1213
 #define IDC_STATIC_SRC_LST              1214
+#define IDC_RADIO_VS                    1214
+#define IDC_RADIO_QT                    1215
+#define IDC_RADIO_CLION                 1216
+#define IDC_EDIT_CLION_PATH             1217
+#define IDC_STATIC_USING_PIPE           1218
 #define ID_VIEW_SHOW_HIDE_STACK         32774
 #define ID_VIEW_SHOW_HIDE_TREE          32775
 #define ID_VIEW_RESUMERECORDIG          32776
@@ -115,6 +122,7 @@
 #define ID_TREE_CHECK_ALL               32796
 #define ID_TREE_UNCHECK_ALL             32797
 #define ID_EDIT_FIND32798               32798
+#define ID_CLEAR_ARCHIVE                32799
 #define ID_EDIT_FINDNEXT                32801
 #define ID_EDIT_FINNDPREVIOUS           32802
 #define ID_EDIT_FINDLAST                32803
@@ -144,14 +152,15 @@
 #define ID_CALL_STACK                   32831
 #define ID_VIEW_DBG_SETTINGS            32833
 #define ID_SEARCH_FILTER                32834
+#define ID_VIEW_RELOADDEBUGSETTINGS     32835
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        540
-#define _APS_NEXT_COMMAND_VALUE         32835
-#define _APS_NEXT_CONTROL_VALUE         1214
+#define _APS_NEXT_COMMAND_VALUE         32838
+#define _APS_NEXT_CONTROL_VALUE         1219
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

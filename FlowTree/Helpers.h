@@ -31,6 +31,7 @@ namespace Helpers
   void AddMenu(HMENU hMenu, int& cMenu, int ID_MENU, LPCTCH str, bool disable = false, MENU_ICON ID_ICON = MENU_ICON_NON);
   void SetMenuIcon(HMENU hMenu, UINT item, MENU_ICON icon);
   void UpdateStatusBar();
+  void UpdateStatusBar(char* str);
   // convert UTF-8 string to wstring
   std::wstring utf8_to_wstring(const std::string& str);
   // convert wstring to UTF-8 string
@@ -39,6 +40,11 @@ namespace Helpers
   std::string wchar_to_utf8(const wchar_t* sz);
   // convert char to wstring
   std::wstring char_to_wstring(const char* sz);
+  void ClearLog();
+  uint32_t crc32(const std::string& data);
+  void UpdateDbgLoadStatus();
+  void BlockLogStatus(bool b);
+  bool BlockLogStatus();
 };
 
 

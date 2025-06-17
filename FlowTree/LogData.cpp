@@ -17,59 +17,29 @@ FLOW_NODE* LOG_NODE::getPeer()
         return nullptr;
 }
 
-DWORD FLOW_NODE::cbFnName(bool forceFullName)
-{ 
-	DbgFuncInfo* p = GetFuncInfo();
-	if (!p)
-		return 0;
-	else if (forceFullName || gSettings.FullFnName())
-		return p->cb_fnName;
-	else
-		return p->cb_shortFnName;
-}
-char* FLOW_NODE::fnName(bool forceFullName)
-{ 
-	DbgFuncInfo* p = GetFuncInfo();
-	if (!p)
-		return "?";
-	else if (forceFullName || gSettings.FullFnName())
-		return p->fnName;
-	else
-		return p->shortFnName;
-}
+// DWORD FLOW_NODE::cbFnName(bool forceFullName)
+// { 
+//     ModuleData* pModuleData = GetModuleData();
+//     if (!pModuleData)
+//         return 0;
+//     return pModuleData->cbFnName(funcId, forceFullName);
+// }
+
 void FLOW_NODE::CopyFuncNamme()
 {
-	DbgFuncInfo* p = GetFuncInfo();
-	Helpers::CopyToClipboard(NULL, p->fnName, -1);
+	Helpers::CopyToClipboard(NULL, getFnName(true), -1);
 }
+
 void FLOW_NODE::CopyFuncInfo()
 {
 	const int cMaxBuf = 4 * 1024;
 	CHAR pBuf[cMaxBuf + 1];
 	int cb = 0;
+    cb += _sntprintf_s(pBuf + cb, cMaxBuf - cb, cMaxBuf - cb, TEXT("moduleId: \t\t%d\n"), moduleId);
 	cb += _sntprintf_s(pBuf + cb, cMaxBuf - cb, cMaxBuf - cb, TEXT("funcId: \t\t%ul\n"), funcId);
 	cb += _sntprintf_s(pBuf + cb, cMaxBuf - cb, cMaxBuf - cb, TEXT("funcAddr: \t\t%llu\n"), funcAddr);
 	cb += _sntprintf_s(pBuf + cb, cMaxBuf - cb, cMaxBuf - cb, TEXT("callAddr: \t\t%llu\n"), callAddr);
 
-	DbgFuncInfo* p = GetFuncInfo();
-	if (0 && p)
-	{
-		cb += _sntprintf_s(pBuf + cb, cMaxBuf - cb, cMaxBuf - cb, TEXT("fnName: \t\t%s\n"), p->fnName);
-		cb += _sntprintf_s(pBuf + cb, cMaxBuf - cb, cMaxBuf - cb, TEXT("shortFnName: \t%s\n"), p->shortFnName);
-		cb += _sntprintf_s(pBuf + cb, cMaxBuf - cb, cMaxBuf - cb, TEXT("attr:  \t\t\t%X\n"), p->attr);
-		cb += _sntprintf_s(pBuf + cb, cMaxBuf - cb, cMaxBuf - cb, TEXT("cLine: \t\t\t%d\n"), p->cLine);
-		cb += _sntprintf_s(pBuf + cb, cMaxBuf - cb, cMaxBuf - cb, TEXT("AddrStart: \t\t%llu\n"), p->GetAddrStart());
-		cb += _sntprintf_s(pBuf + cb, cMaxBuf - cb, cMaxBuf - cb, TEXT("AddrEnd: \t\t%llu\n"), p->GetAddrEnd());
-		DbgLineInfo* pLineInfo = p->pLineInfo;
-		for (WORD i = 0; i < p->cLine && cb < cMaxBuf; i++)
-		{ 
-			char ch = ' ';
-			if (pLineInfo[i].addr <= funcAddr && pLineInfo[i].addr + pLineInfo[i].dwLength > funcAddr)
-				ch = '*';
-			cb += _sntprintf_s(pBuf + cb, cMaxBuf - cb, cMaxBuf - cb, TEXT("%c Line %d: addr: %llu dwLength:%lu line:%lu srcName: %s srcShortName: %s\n"), ch, i, pLineInfo[i].addr, pLineInfo[i].dwLength, pLineInfo[i].line, pLineInfo[i].srcName, pLineInfo[i].srcShortName);
-		}
-
-	}
 	pBuf[cb] = 0;
 	Helpers::CopyToClipboard(NULL, pBuf, cb);
 }
@@ -78,33 +48,38 @@ char* LOG_NODE::getFnName(bool forceFullName)
 {
     if (isFlow())
     {
-		return  ((FLOW_NODE*)this)->fnName(forceFullName);
+        FLOW_NODE* This = (FLOW_NODE*)this;
+        ModuleData* pModuleData = This->GetModuleData();
+        if (!pModuleData)
+            return 0;
+        return pModuleData->fnName(This->funcId, forceFullName);
 	}
     else if (isTrace())
     {
-        return  ((TRACE_NODE*)this)->fnName();
+        return  ((TRACE_NODE*)this)->tarce_fnName();
     }
     else
     {
         return "";
     }
 }
-int LOG_NODE::getFnNameSize(bool forceFullName)
-{
-	if (isFlow())
-	{
-		return  ((FLOW_NODE*)this)->cbFnName(forceFullName);
-	}
-	else if (isTrace())
-	{
-		return  ((TRACE_NODE*)this)->cb_fn_name;
-	}
-	else
-	{
-		return 0;
-	}
+// int LOG_NODE::getFnNameSize(bool forceFullName)
+// {
+// 	if (isFlow())
+// 	{
+// 		return  ((FLOW_NODE*)this)->cbFnName(forceFullName);
+// 	}
+// 	else if (isTrace())
+// 	{
+// 		return  ((TRACE_NODE*)this)->cb_fn_name;
+// 	}
+// 	else
+// 	{
+// 		return 0;
+// 	}
 
-}
+// }
+
 int LOG_NODE::getTraceText(char* pBuf, int max_cb_trace)
 {
     int cb = 0;
@@ -141,9 +116,9 @@ void FLOW_NODE::addToTree()
     else
     {
         FLOW_NODE* lastFlowNode = threadNode->curentFlow;
-        if (isEnter())
+        if (isEnterType())
         {
-            if (lastFlowNode->peer || !lastFlowNode->isEnter())
+            if (lastFlowNode->peer || !lastFlowNode->isEnterType())
             {
 				threadNode->add_thread_child(this, ROOT_CHILD);
             }
@@ -156,7 +131,7 @@ void FLOW_NODE::addToTree()
         {
 			while ((void*)lastFlowNode != (void*)threadNode)
 			{
-				if (lastFlowNode->peer == NULL && lastFlowNode->isEnter() && lastFlowNode->funcId == funcId)
+				if (lastFlowNode->peer == NULL && lastFlowNode->isEnterType() && lastFlowNode->moduleId == moduleId && lastFlowNode->funcId == funcId)
 				{
 					lastFlowNode->peer = this;
                     peer = lastFlowNode;
@@ -171,7 +146,7 @@ void FLOW_NODE::addToTree()
 			}
 			if ((void*)lastFlowNode == (void*)threadNode)
 			{
-                if (lastFlowNode->isEnter())
+                if (lastFlowNode->isEnterType())
                 {
 					threadNode->add_thread_child(this, ROOT_CHILD);
                 }
@@ -201,7 +176,7 @@ int LOG_NODE::getTreeImage()
     else if (isFlow())
     {
         FLOW_NODE* This = (FLOW_NODE*)this;
-        return This->peer ? 3 : (This->isEnter() ? 4 : 5);//IDI_ICON_TREE_PAIRED, IDI_ICON_TREE_ENTER, IDI_ICON_TREE_EXIT
+        return This->peer ? 3 : (This->isEnterType() ? 4 : 5);//IDI_ICON_TREE_PAIRED, IDI_ICON_TREE_ENTER, IDI_ICON_TREE_EXIT
     }
     else
     {
@@ -265,20 +240,16 @@ CHAR* LOG_NODE::getTreeText(int* cBuf, bool extened)
     else if (isFlow())
     {
         FLOW_NODE* This = (FLOW_NODE*)this;
-        int cb_name = This->getFnNameSize();
-        memcpy(pBuf + cb, This->getFnName(), cb_name);
-        cb += cb_name;
+        cb += _sntprintf_s(pBuf + cb, cMaxBuf -cb , cMaxBuf - cb, TEXT("%s"), This->getFnName());
         if (extened)
         {
             if (gSettings.ColNN() && NN)
                 cb += _sntprintf_s(pBuf + cb, cMaxBuf -cb , cMaxBuf - cb, TEXT(" (%d)"), NN); //gArchive.index(this) NN
             if (gSettings.ShowElapsedTime() && This->getPeer())
             {
-                _int64 sec1 = This->getTimeSec();
-                _int64 msec1 = This->getTimeMSec();
-                _int64 sec2 = (This->getPeer())->getTimeSec();
-                _int64 msec2 = (This->getPeer())->getTimeMSec();
-                cb += _sntprintf_s(pBuf + cb, cMaxBuf -cb , cMaxBuf - cb, TEXT(" (%lldms)"), (sec2 - sec1) * 1000 + (msec2 - msec1));
+                DWORD tickCount1 = This->tickCount;
+                DWORD tickCount2 = (This->getPeer())->tickCount;
+                cb += _sntprintf_s(pBuf + cb, cMaxBuf -cb , cMaxBuf - cb, TEXT(" (%dms)"), tickCount2 - tickCount1);
             }
 #ifdef SHOW_CHILD_COUNT
 			cb += _sntprintf_s(pBuf + cb, cMaxBuf -cb , cMaxBuf - cb, TEXT(" (%d)"), cChild); //gArchive.index(this) NN
@@ -290,7 +261,7 @@ CHAR* LOG_NODE::getTreeText(int* cBuf, bool extened)
         }
         if (gSettings.FnCallLine())
         {
-			cb += _sntprintf_s(pBuf + cb, cMaxBuf -cb , cMaxBuf - cb, TEXT(" (%d)"), This->GetCallLine());
+			cb += _sntprintf_s(pBuf + cb, cMaxBuf -cb , cMaxBuf - cb, TEXT(" (%d)"), This->getCallLine());
         }
         pBuf[cb] = 0;
     }
@@ -339,20 +310,10 @@ CHAR* LOG_NODE::getListText(int* cBuf, LIST_COL col)
     {
         if (isInfo())
         {
-            struct tm timeinfo;
-            DWORD sec = getTimeSec();
-            DWORD msec = getTimeMSec();
-            time_t rawtime = sec;
-            if (0 == localtime_s(&timeinfo, &rawtime))
-                cb += (int)strftime(pBuf, MAX_BUF_LEN, "%H:%M:%S", &timeinfo);
-
-            //struct tm * timeinfo2;
-            //time_t rawtime2 = _time32(NULL);
-            //timeinfo2 = localtime(&rawtime2);
-            //cb += strftime(pBuf + cb, MAX_BUF_LEN, " %H.%M.%S", timeinfo2);
-            //int i = 4294967290 / 10000000;
-            //        6553500000
-            cb += _sntprintf_s(pBuf + cb, MAX_BUF_LEN - cb, MAX_BUF_LEN - cb, TEXT(".%03d"), msec);
+            INFO_NODE* This = (INFO_NODE*)this;
+            DWORD tickCount1 = gArchive.TickCount();
+            DWORD tickCount2 = This->tickCount;
+            cb += _sntprintf_s(pBuf + cb, MAX_BUF_LEN - cb, MAX_BUF_LEN - cb, TEXT("%d"), tickCount2 - tickCount1);
         }
     }
     else if (col == FUNC_COL)
@@ -360,21 +321,18 @@ CHAR* LOG_NODE::getListText(int* cBuf, LIST_COL col)
         if (isTrace())
         {
             TRACE_NODE* This = (TRACE_NODE*)this;
-            cb += This->getFnNameSize();
-            memcpy(pBuf, This->getFnName(), cb);
-            pBuf[cb] = 0;
+            cb += _sntprintf_s(pBuf + cb, MAX_BUF_LEN - cb, MAX_BUF_LEN - cb, TEXT("%s"), This->getFnName());
         }
         else if (isFlow())
         {
             FLOW_NODE* This = (FLOW_NODE*)this;
-            cb += This->getFnNameSize();
-            memcpy(pBuf, This->getFnName(), cb);
-            pBuf[cb] = 0;
+            cb += _sntprintf_s(pBuf + cb, MAX_BUF_LEN - cb, MAX_BUF_LEN - cb, TEXT("%s"), This->getFnName());
         }
     }
     else if (col == CALL_LINE_COL)
     {
-        cb += _sntprintf_s(pBuf + cb, MAX_BUF_LEN - cb, MAX_BUF_LEN - cb, TEXT("%d"), getCallLine());
+        if (isInfo())
+            cb += _sntprintf_s(pBuf + cb, MAX_BUF_LEN - cb, MAX_BUF_LEN - cb, TEXT("%d"), ((INFO_NODE*)this)->getCallLine());
         if (isFlow())
             cb += _sntprintf_s(pBuf + cb, MAX_BUF_LEN - cb, MAX_BUF_LEN - cb, TEXT(" %d"), ((FLOW_NODE*)this)->GetFuncLine());
     }
@@ -383,9 +341,7 @@ CHAR* LOG_NODE::getListText(int* cBuf, LIST_COL col)
         if (isFlow())
         {
             FLOW_NODE* This = (FLOW_NODE*)this;
-            cb += This->getFnNameSize();
-            memcpy(pBuf, This->getFnName(), cb);
-            pBuf[cb] = 0;
+            cb += _sntprintf_s(pBuf + cb, MAX_BUF_LEN - cb, MAX_BUF_LEN - cb, TEXT("%s"), This->getFnName());
         }
         else if (isTrace())
         {
@@ -429,14 +385,6 @@ int LOG_NODE::getNN()
 {
 	return isInfo() ? ((INFO_NODE*)this)->nn : 0;
 }
-LONG LOG_NODE::getTimeSec()
-{
-    return isInfo() ? ( ((INFO_NODE*)this)->tickCount - gArchive.TickCount() ) / 1000 : 0LL;
-}
-LONG LOG_NODE::getTimeMSec()
-{
-	return isInfo() ? (((INFO_NODE*)this)->tickCount - gArchive.TickCount()) % 1000 : 0LL;
-}
 int LOG_NODE::getPid()
 {
     if (isApp())
@@ -456,12 +404,29 @@ DWORD64 LOG_NODE::getCallAddr()
 }
 int LOG_NODE::getCallLine()
 {
-	if (isFlow())
-		return ((FLOW_NODE*)this)->GetCallLine();
-	else if (isTrace())
-		return ((TRACE_NODE*)this)->GetCallLine();
-	else
-		return 0;
+	if (isFlow()) 
+    {
+        if (((INFO_NODE*)this)->callLine != -1)
+        {
+            ((INFO_NODE*)this)->callLine = -1;
+            WORD moduleId;
+            DWORD funcId;
+            if (getApp()->findAddr(((FLOW_NODE*)this)->callAddr, funcId, moduleId))
+            {
+                ModuleData* pModuleData = getApp()->pDbgInfo->arModuleData[moduleId];
+                DbgLineInfo* pLineInfo = pModuleData->GetLineInfo(funcId, ((FLOW_NODE*)this)->callAddr);
+                if (pLineInfo)
+                    ((INFO_NODE*)this)->callLine = pLineInfo->line;
+            }
+        }
+        return ((INFO_NODE*)this)->callLine;
+    }
+    else if (isTrace())
+    {
+        return ((INFO_NODE*)this)->callLine;
+    }
+    else
+        return 0;
 }
 
 void LOG_NODE::CollapseExpand(BOOL expand)
@@ -552,76 +517,91 @@ void LOG_NODE::CollapseExpandAll(bool expand)
     CalcLines();
 }
 
-
-inline DbgFuncInfo* FLOW_NODE::GetFuncInfo()
+inline ModuleData* FLOW_NODE::GetModuleData()
 {
-	return getApp()->GetFuncInfo(funcId);
+    if (moduleId < getApp()->pDbgInfo->arModuleData.size())
+    {
+        return getApp()->pDbgInfo->arModuleData[moduleId];
+    }
+    else
+        return nullptr;
 }
+
+DbgLineInfo* FLOW_NODE::GetLineInfo() {
+    ModuleData* pModuleData = GetModuleData();
+    if (!pModuleData)
+        return 0;
+    return pModuleData->GetLineInfo(funcId, funcAddr);
+}
+
 int FLOW_NODE::GetFuncLine()
 {
-	DbgFuncInfo* p = GetFuncInfo();
-	if (p) {
-		DbgLineInfo* pLineInfo = p->GetLineInfo(funcAddr);
-		return pLineInfo->line;
-	}
-	return 0;
+    DbgLineInfo* pLineInfo = GetLineInfo();
+    if(!pLineInfo)
+        return 0;
+    return pLineInfo->line;
 }
+
 char* FLOW_NODE::getFuncSrc(bool fullPath)
 {
-	char* src = "";
-	DbgFuncInfo* p = GetFuncInfo();
-	if (p) {
-		DbgLineInfo* pLineInfo = p->GetLineInfo(funcAddr);
-		if (fullPath)
-			src = pLineInfo->srcName;
-		else
-			src = pLineInfo->srcShortName;
-	}
-	return src;
+    ModuleData* pModuleData = GetModuleData();
+    if (!pModuleData)
+        return "";
+    return pModuleData->getFuncSrc(funcId, funcAddr, fullPath);
 }
-char* FLOW_NODE::getCallSrc(bool fullPath)
+
+char* INFO_NODE::getCallSrc(bool fullPath)
 {
-	char* src = "";
-	DbgFuncInfo* p = getApp()->GetFuncInfoByAddr(callAddr);
-	if (p) {		
-		DbgLineInfo* pLineInfo = p->pLineInfo;
-		if (fullPath)
-			src = pLineInfo->srcName;
-		else
-			src = pLineInfo->srcShortName;
-	}
-	return src;
+    if (isFlow())
+    {
+        FLOW_NODE* This = (FLOW_NODE*)this;
+        char* src = "";
+        WORD moduleId;
+        DWORD funcId;
+        if (getApp()->findAddr(This->callAddr, funcId, moduleId))
+        {
+            ModuleData* pModuleData = getApp()->pDbgInfo->arModuleData[moduleId];
+            src = pModuleData->getFuncSrc(funcId, This->callAddr, fullPath);
+        }
+        return src;
+    }
+    else if (isTrace())
+    {
+        return ((TRACE_NODE*)this)->tarce_srcName();
+    }
+    else
+        return "";
+
 }
-int FLOW_NODE::GetCallLine()
+
+bool APP_NODE::findAddr(DWORD64 addr, DWORD& funcId, WORD& moduleId)
 {
-	if (callLine != -1)
-	{
-		callLine = -1;
-		DbgFuncInfo* p = getApp()->GetFuncInfoByAddr(callAddr);
-		if (p) {
-			callLine = p->GetLineInfo(callAddr)->line;
-		}
-	}
-	return callLine;
-}
-DbgFuncInfo* APP_NODE::GetFuncInfoByAddr(DWORD64 addr)
-{
-	PtrArray<DbgFuncInfo>* p = pDbgInfo->FuncInfo();
-	DWORD l = 0, u = p->Count(), idx, funcId = INFINITE;
-	while (l < u)
-	{
-		idx = (l + u) / 2;
-		if (addr < p->Get(idx)->GetAddrStart()) //comparison < 0
-			u = idx;
-		else if (addr > p->Get(idx)->GetAddrEnd()) //comparison > 0
-			l = idx + 1;
-		else
+    WORD cModules = (WORD)pDbgInfo->arModuleData.size();
+	bool ret = false;
+	for (WORD i = 0; i < cModules; i++)
+	{        
+		if (addr < pDbgInfo->arModuleData[i]->startAddr || addr > pDbgInfo->arModuleData[i]->endAddr)
+			continue;
+		addr -= pDbgInfo->arModuleData[i]->startAddr;
+		DWORD l = 0, u = (DWORD)pDbgInfo->arModuleData[i]->info.Count(), idx;
+		while (l < u)
 		{
-			funcId = idx; //found 
-			break;
+			idx = (l + u) / 2;
+            DbgFuncInfo* funcInfo = pDbgInfo->arModuleData[i]->GetDbgFuncInfo(idx);
+			if (addr < funcInfo->addrStart) //comparison < 0
+				u = idx;
+			else if (addr > funcInfo->addrEnd) //comparison > 0
+				l = idx + 1;
+			else {
+				funcId = idx; //found 
+				moduleId = i;
+				ret = true;
+				break;
+			}
 		}
+		break;
 	}
-	return p->Get(funcId);
+	return ret;
 }
 
 //return true if check changed

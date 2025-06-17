@@ -1,17 +1,20 @@
 #pragma once
 
-#include "Buffer.h"
+#include "FileMap.h"
 
 #define MAX_TRCAE_LEN (1024*2)
 #define MAX_FUNC_NAME_LEN (1024*3)
+#define MAX_SRC_NAME_LEN (4 * MAX_PATH)
 
 #define CMD_BUF(cmd) (char*)(&cmd)+1
 #define CMD_SIZE(cmd) sizeof(cmd)-1
 #define CMD_BUF_AND_SIZE(cmd) (char*)(&cmd)+1, sizeof(cmd)-1
 
-enum PROFILER_CMD { CMD_START, CMD_NEXT_MODULE, CMD_PREP_INFO, CMD_INFO_SIZE, CMD_FLOW, CMD_TRACE, CMD_LAST };
+enum PROFILER_CMD { CMD_START, CMD_SETTINGS, CMD_MODULE, CMD_PREP_INFO, CMD_INFO_SIZE, CMD_FLOW, CMD_TRACE, CMD_STARTING, CMD_LAST };
 #define LOG_ATTR_SKIP_FUNC 1
 #define LOG_ATTR_SHOW_FUNC 2
+#define LOG_ATTR_HIDE_FUNC 3
+#define LOG_ATTR_EXPAND_FUNC 4
 
 #pragma pack(push,1)
 struct Cmd
@@ -25,11 +28,25 @@ struct CmdStart : Cmd
 	DWORD Pid;
 	char szAppName[MAX_PATH];
 };
-struct CmdNextModule : Cmd
+struct CmdStarting : Cmd
 {
-    CmdNextModule() : Cmd(CMD_NEXT_MODULE) {}
-    DWORD64 BaseOfDll;
-    char szModName[MAX_PATH];
+	CmdStarting() : Cmd(CMD_STARTING) {}
+	DWORD tickCount;
+	DWORD TRACE_MAP_FILE_SIZE;
+};
+struct CmdSettings : Cmd
+{
+	CmdSettings() : Cmd(CMD_SETTINGS) {}
+	DWORD DissableBufferization;
+	DWORD UseTcpForLog;
+};
+struct CmdModule : Cmd
+{
+    CmdModule() : Cmd(CMD_MODULE) {}
+    DWORD64 startAddr;
+	DWORD64 endAddr;
+	DWORD FuncCount;
+	char szModName[MAX_PATH];
 };
 struct CmdInfoSize : Cmd
 {
@@ -39,13 +56,17 @@ struct CmdInfoSize : Cmd
 struct CmdLog : Cmd
 {
     CmdLog(PROFILER_CMD c) : Cmd(c) {}
-    DWORD tid;
+	DWORD cb;
+	DWORD NN;
+	DWORD Pid;
+	DWORD tid;
     DWORD tickCount;
 };
 struct CmdFlow : CmdLog
 {
     CmdFlow() : CmdLog(CMD_FLOW) {}
     BYTE enter;
+	WORD moduleId;
     DWORD funcId;
 	DWORD64 funcAddr;
 	DWORD64 callAddr;
@@ -55,20 +76,16 @@ struct CmdTrace : CmdLog
     CmdTrace() : CmdLog(CMD_TRACE) {}
 	int MsgType; //enum QtMsgType { QtDebugMsg, QtWarningMsg, QtCriticalMsg, QtFatalMsg, QtInfoMsg};
     int call_line;
+	int cb_src_name;
     int cb_fn_name;
     int cb_trace;
-	char* fnName() { return ((char*)(this)) + sizeof(CmdTrace); }
+	char* srcName() { return ((char*)(this)) + sizeof(CmdTrace); }
+	char* fnName() { return srcName() + cb_src_name; }
 	char* trace() { return fnName() + cb_fn_name; }
-	DWORD CmdTraceSize() { return sizeof(CmdTrace) + cb_fn_name + cb_trace; }
+	DWORD CmdTraceSize() { return sizeof(CmdTrace) + CmdTraceDadaSize(); }
+	DWORD CmdTraceDadaSize() { return cb_src_name + cb_fn_name + cb_trace; }
 };
 #define UDP_BUF_SIZE (1400) // this size of UDP guaranteed to be send as single package
-struct TRACE_BUF
-{
-	DWORD cb;
-	DWORD Pid;
-	DWORD NN;
-	char buf[UDP_BUF_SIZE];
-};
 
 struct DbgLineInfo
 {
@@ -76,55 +93,86 @@ struct DbgLineInfo
     DWORD64 addr;
     DWORD   dwLength;
 	DWORD   dwSrcId;
-	char*   srcName;
-	char*   srcShortName;
+	DWORD   srcNameOffset;
 };
+
 struct DbgFuncInfo
 {
-    char* fnName;
-    DWORD cb_fnName;
-    char* shortFnName;
-    DWORD cb_shortFnName;
+	DWORD fnNameOffset;
+    DWORD shortFnNameSize;
 	BYTE  attr;
     DWORD  cLine = 0;
-	bool pathIncluded = true;
-    DbgLineInfo* pLineInfo;
-	DWORD64 GetAddrStart() {
-		return (pLineInfo && cLine) ? pLineInfo[0].addr : 0;
-	}
-	DWORD64 GetAddrEnd() {
-		return (pLineInfo && cLine) ? (pLineInfo[cLine - 1].addr + pLineInfo[cLine - 1].dwLength): 0;
-	}
-	bool les(DbgFuncInfo *p) {
-		return (GetAddrStart() < p->GetAddrStart());
-	}
-	DbgLineInfo* GetLineInfo(DWORD64 address) {
-		DbgLineInfo* p = pLineInfo;
-		for (WORD i = 0; !(p->addr <= address && p->addr + p->dwLength >= address) && i < cLine - 1; i++)
-			p++;
-		return p;
-	}
+	DWORD64 addrStart = 0;
+	DWORD64 addrEnd = 0;
+	DWORD lineInfoOffset;
 };
+
 struct FUNC_ADDR
 {
     DWORD64 addrStart;
     DWORD64 addrEnd;
 	BYTE    attr;
 };
+
+constexpr const char* DbgInfExtention = ".inf";
+constexpr const char* DbgDatExtention = ".dat";
+constexpr DWORD DbgFileMapHeaderVersion = 1;
+constexpr DWORD DbgFileMapHeaderMagic = 0xF0F0F0F0;
+struct DbgFileMapHeader
+{
+	DWORD version = DbgFileMapHeaderVersion;
+	DWORD magic = 0; //will set correct value after successful load
+	uint32_t crcDbgSettings = 0;
+	FILETIME ftLastWriteTime = {0,0};
+};
 #pragma pack(pop)
+
+struct DbgLoadStatus
+{
+	bool stop;
+	DWORD cModulesTotal;
+	DWORD cModulesLoading;
+	DWORD cFunctionsLoaded;
+	DWORD cSettingsChecked;
+};
+extern DbgLoadStatus gDbgLoadStatus;
+
+struct ModuleData
+{
+	ModuleData(const CmdModule*);
+	~ModuleData();
+	DWORD64 startAddr;
+	DWORD64 endAddr;
+	char szModName[MAX_PATH];
+	ARRAY_IN_FILE<DbgFuncInfo> info;
+	BUFFER_IN_FILE data;
+	DbgFuncInfo* GetDbgFuncInfo(DWORD funcId) { 
+		return funcId < info.Count() ? &info[funcId] : nullptr; 
+	}
+	DbgLineInfo* GetFirstLineInfo(DWORD funcId);
+	DbgLineInfo* GetLineInfo(DWORD funcId, DWORD64 funcAddr);
+	char* fnName(DWORD funcId, bool forceFullName);
+	// DWORD cbFnName(DWORD funcId, bool forceFullName);
+	char* getFuncSrc(DWORD funcId, DWORD64 funcAddr, bool fullPath);
+	DWORD64 GetAddrStart(DWORD funcId);
+	DWORD64 GetAddrEnd(DWORD funcId);
+	bool GetFuncAddresses(DWORD funcId, FUNC_ADDR& funcAdd);
+	bool ready = false;
+};
 
 class DbgInfo
 {
 public:
-    DbgInfo();
+	DbgInfo(const char* _appPath);
     ~DbgInfo();
-    bool AddInfo(DWORD64 BaseOfDll, char* szModName);
-    PtrArray<DbgFuncInfo>* FuncInfo() { return m_pDbgFuncInfo; }
-	DWORD Pid;
+	std::vector<ModuleData*> arModuleData;
+	bool AddModule(const CmdModule* module);
+	bool OpenFileMaps(ModuleData* moduleData, const char* szModName, bool openExisting);
+	bool DbgFileMapHeaderValid(const WIN32_FIND_DATAA& moduleFileData, const DbgFileMapHeader& hdr);
+	void CheckDbgSettings(ModuleData* moduleData);
+	DWORD Pid = 0;
+	uint32_t crcDbgSettings;
 	char appPath[MAX_PATH + 1];
-private:
-    MemBuf* m_pMemBuf;
-    PtrArray<DbgFuncInfo>* m_pDbgFuncInfo;
 };
 
 

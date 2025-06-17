@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "Buffer.h"
 #include "Helpers.h"
 #include "Callback.h"
 #include "Dbg.h"
@@ -6,78 +7,362 @@
 #include "Settings.h"
 #include "comdef.h"
 
+char fnName[MAX_FUNC_NAME_LEN + 1] = {0};
+char srcNameLast[MAX_SRC_NAME_LEN + 1] = { 0 };
+DWORD  srcNameOffset = 0;
+DbgLoadStatus gDbgLoadStatus;
+static int PathIncluded(char* szPath);
+static BYTE GetAttr(char* szFunc);
+
 class Dbg
 {
 public:
-    Dbg(DWORD64 BaseOfDll, char* szModName, MemBuf* pMemBuf, PtrArray<DbgFuncInfo>* pDbgFuncInfo, bool dump);
-
-    bool LoadDataFromPdb();
+    Dbg();
+    bool Init(ModuleData* moduleData, const char* szModName);
+    bool LoadDataFromPdb(const char* szModName);
     bool DumpAllLines();
     void EnumFunctionLines(IDiaSymbol *pFunction);
     void EnumLineNumbers(IDiaEnumLineNumbers *pLines);
 	bool SetCurSource(IDiaLineNumber *pLine);
-	BYTE GetAttr(char *szFunc);
-	bool PathIncluded(char *szPath);
-	DWORD64 m_BaseOfDll;
-    char* m_srcNameLast;
-	char* m_srcShortNameLast;
-	DbgFuncInfo m_CurInfo;
+
+    ModuleData* m_moduleData;
+    size_t LineCount;
+    DbgFuncInfo m_CurInfo;
+    int cb_shortSrcNameName;
     IDiaDataSource *m_pDiaDataSource;
     IDiaSession *m_pDiaSession;
     IDiaSymbol *m_pGlobalSymbol;
     DWORD m_dwMachineType;
-    std::wstring m_moduleName;
-    MemBuf* m_pMemBuf;
-    PtrArray<DbgFuncInfo>* m_pDbgFuncInfo;
-    BigArray<DbgLineInfo> *m_pLineArray;
-    size_t LineCount;
+    BigArray<DbgLineInfo>* m_pLineArray;
 };
 
-DbgInfo::DbgInfo()
-{
-    m_pMemBuf = new MemBuf(1024 * 1024 * 1024, 256 * 1024);
-    m_pDbgFuncInfo = new PtrArray<DbgFuncInfo>(m_pMemBuf);
+
+DbgInfo::DbgInfo(const char* _appPath) {
+    strcpy_s(appPath, _appPath);
+
+    std::stringstream ss;
+    ss << gSettings.m_DbgSettings.m_applyFuncFilters;
+    ss << gSettings.m_DbgSettings.m_applyPathFilters;
+    for (auto a : gSettings.m_DbgSettings.m_arDbgFilter) {
+        ss << a.m_szFunc;
+        ss << a.m_showFunc;
+        ss << a.m_Priority;
+        ss << a.m_skipFilter;
+    }
+    //for (auto a : gSettings.m_DbgSettings.m_arDbgModules)
+    //    ss << a.m_szModul;
+    for (auto a : gSettings.m_DbgSettings.m_arDbgSources) {
+        ss << a.m_szSrc;
+        ss << a.m_Priority;
+        ss << a.m_showSrc;
+        ss << a.m_skipSrc;
+    }
+    crcDbgSettings = Helpers::crc32(ss.str());
 }
 
 DbgInfo::~DbgInfo()
 {
-    delete m_pMemBuf;
-    delete m_pDbgFuncInfo;
+    for (auto a : arModuleData)
+    {
+        delete a;
+    }
 }
 
-bool DbgInfo::AddInfo(DWORD64 BaseOfDll, char* szModName)
+inline DbgLineInfo* ModuleData::GetFirstLineInfo(DWORD funcId)
 {
-    Dbg dbg(BaseOfDll, szModName, m_pMemBuf, m_pDbgFuncInfo, false);
-    return dbg.LineCount > 0;
+    return (DbgLineInfo*)data.GetVal(GetDbgFuncInfo(funcId)->lineInfoOffset);
 }
 
-char* szOneFunc = "std::_Ptr_base<winrt::XamlTypeInfo::implementation::XamlMetaDataProvider>::_Ptr_base<winrt::XamlTypeInfo::implementation::XamlMetaDataProvider>";
+ModuleData::ModuleData(const CmdModule* module)
+{
+    startAddr = module->startAddr;
+    endAddr = module->endAddr;
+    strcpy_s(szModName, module->szModName);
 
-Dbg::Dbg(DWORD64 BaseOfDll, char* szModName, MemBuf* pMemBuf, PtrArray<DbgFuncInfo>* pDbgFuncInfo, bool dump)
+}
+
+ModuleData::~ModuleData()
+{
+    if (!ready) {
+        std::string strModName{ szModName };
+        std::string strDbgIfoFile = strModName + DbgInfExtention;
+        std::string strDbgDatFile = strModName + DbgDatExtention;
+        DeleteFileA(strDbgIfoFile.c_str());
+        DeleteFileA(strDbgDatFile.c_str());
+    }
+}
+
+DWORD64 ModuleData::GetAddrStart(DWORD funcId) {
+    DbgFuncInfo* pDbgFuncInfo = GetDbgFuncInfo(funcId);
+    if (!pDbgFuncInfo || !pDbgFuncInfo->cLine)
+        return 0;
+    return pDbgFuncInfo->addrStart;
+    //DbgLineInfo* pFirstLineInfo = GetFirstLineInfo(funcId);
+    //return pFirstLineInfo[0].addr;
+}
+
+DWORD64 ModuleData::GetAddrEnd(DWORD funcId) {
+    DbgFuncInfo* pDbgFuncInfo = GetDbgFuncInfo(funcId);
+    if (!pDbgFuncInfo || !pDbgFuncInfo->cLine)
+        return 0;
+    return pDbgFuncInfo->addrEnd;
+    //DbgLineInfo* pFirstLineInfo = GetFirstLineInfo(funcId);
+    //return pFirstLineInfo[pDbgFuncInfo->cLine - 1].addr + pFirstLineInfo[pDbgFuncInfo->cLine - 1].dwLength;
+}
+
+bool ModuleData::GetFuncAddresses(DWORD funcId, FUNC_ADDR& fa)
+{
+    DbgFuncInfo* pDbgFuncInfo = GetDbgFuncInfo(funcId);
+    if (!pDbgFuncInfo || !pDbgFuncInfo->cLine)
+        return false;
+    fa.addrStart = pDbgFuncInfo->addrStart;
+    fa.addrEnd = pDbgFuncInfo->addrEnd;
+    fa.attr = pDbgFuncInfo->attr;
+    return true;
+}
+
+DbgLineInfo* ModuleData::GetLineInfo(DWORD funcId, DWORD64 funcAddr)
+{
+    DbgFuncInfo* pDbgFuncInfo = GetDbgFuncInfo(funcId);
+    if (!pDbgFuncInfo)
+        return nullptr;
+    DbgLineInfo* pFirstLineInfo = GetFirstLineInfo(funcId);
+    DbgLineInfo* p = pFirstLineInfo;
+    DbgLineInfo* pRet = pFirstLineInfo;
+    DWORD64 min_diff = -1;
+    for (WORD i = 0; i < pDbgFuncInfo->cLine; i++) {
+        DWORD64 lineAddr = p->addr + startAddr;
+        DWORD64 diff = (funcAddr > lineAddr) ? (funcAddr - lineAddr) : (lineAddr - funcAddr);
+        if (diff < min_diff && p->line != 0xF00F00)
+        {
+            min_diff = diff;
+            pRet = p;
+        }
+        p++;
+    }
+    //for (WORD i = 0; !(p->addr <= address && p->addr + p->dwLength >= address) && i < cLine - 1; i++)
+    //	p++;
+    return pRet;
+}
+
+// DWORD ModuleData::cbFnName(DWORD funcId, bool forceFullName)
+// {
+//     DbgFuncInfo* pDbgFuncInfo = GetDbgFuncInfo(funcId);
+//     if (!pDbgFuncInfo)
+//         return 0;
+//     if (forceFullName || gSettings.FullFnName())
+//         return data.GetSize(pDbgFuncInfo->fnNameOffset) - 1;
+//     else
+//         return pDbgFuncInfo->shortFnNameSize;
+// }
+
+char* ModuleData::fnName(DWORD funcId, bool forceFullName)
+{
+    DbgFuncInfo* pDbgFuncInfo = GetDbgFuncInfo(funcId);
+    if (!pDbgFuncInfo)
+        return "?";
+    if (forceFullName || gSettings.FullFnName())
+        return data.GetVal(pDbgFuncInfo->fnNameOffset);
+    else
+        return data.GetValEnd(pDbgFuncInfo->fnNameOffset) - pDbgFuncInfo->shortFnNameSize - 1;
+}
+
+char* ModuleData::getFuncSrc(DWORD funcId, DWORD64 funcAddr, bool fullPath)
+{
+    char* src = "";
+    DbgLineInfo* pLineInfo = GetLineInfo(funcId, funcAddr);
+    if (pLineInfo) {
+        src = data.GetVal(pLineInfo->srcNameOffset);
+        if (!fullPath) {
+            char* srcShortName = strrchr(src, '\\');
+            if (srcShortName)
+                src = srcShortName++;
+        }
+    }
+    return src;
+
+}
+
+bool DbgInfo::DbgFileMapHeaderValid(const WIN32_FIND_DATAA& moduleFileData, const DbgFileMapHeader& hdr)
+{
+    if (hdr.version != DbgFileMapHeaderVersion)
+        return false;
+    if (hdr.magic != DbgFileMapHeaderMagic)
+        return false;
+    if (0 != memcmp(&hdr.ftLastWriteTime, &moduleFileData.ftLastWriteTime, sizeof(FILETIME)))
+        return false;    
+    return true;
+}
+
+void DbgInfo::CheckDbgSettings(ModuleData* moduleData)
+{
+    DbgFileMapHeader *hdrInfo, *hdrData;
+    hdrInfo = (DbgFileMapHeader*)moduleData->info.m_ptr;
+    hdrData = (DbgFileMapHeader*)moduleData->data.m_ptr;
+    if (hdrInfo->crcDbgSettings != crcDbgSettings || hdrData->crcDbgSettings != crcDbgSettings)
+    {
+        int pathAttr = 0;
+        srcNameLast[0] = 0;
+        DWORD funcCount = (DWORD)moduleData->info.Count();
+        for (DWORD funcId = 0; funcId < funcCount; funcId++)
+        {
+            if (gDbgLoadStatus.cSettingsChecked++ % 1000 == 0)
+                Helpers::UpdateDbgLoadStatus();
+            DbgFuncInfo* pDbgFuncInfo = moduleData->GetDbgFuncInfo(funcId);
+            char* fnName = moduleData->data.GetVal(pDbgFuncInfo->fnNameOffset);
+            DbgLineInfo* pLineInfo = moduleData->GetFirstLineInfo(funcId);
+            char* src = moduleData->data.GetVal(pLineInfo->srcNameOffset);
+            if (0 != strcmp(src, srcNameLast))
+            {
+                strncpy_s(srcNameLast, src, MAX_SRC_NAME_LEN);
+                pathAttr = PathIncluded(srcNameLast);
+            }
+            pDbgFuncInfo->attr = GetAttr(fnName);
+            if (pathAttr) {
+                if (!pDbgFuncInfo->attr) {
+                    pDbgFuncInfo->attr = pathAttr;
+                }
+            }
+        }
+        hdrInfo->crcDbgSettings = crcDbgSettings;
+        hdrData->crcDbgSettings = crcDbgSettings;
+    }
+}
+
+bool DbgInfo::OpenFileMaps(ModuleData* moduleData, const char* szModName, bool openExisting)
+{
+    std::string strModName{ szModName };
+    std::string strDbgIfoFile = strModName + DbgInfExtention;
+    std::string strDbgDatFile = strModName + DbgDatExtention;
+    DWORD dwCreationDisposition = openExisting ? OPEN_EXISTING : CREATE_ALWAYS;
+    if (!moduleData->info.Create(strDbgIfoFile.c_str(), true, dwCreationDisposition))
+    {
+        if (!openExisting)
+            stdlog("Failed to create %s\n", strDbgIfoFile.c_str());
+        goto err;
+    }
+    if (!moduleData->data.Create(strDbgDatFile.c_str(), true, dwCreationDisposition))
+    {
+        if (!openExisting)
+            stdlog("Failed to create %s\n", strDbgDatFile.c_str());
+        goto err;
+    }
+    WIN32_FIND_DATAA moduleFileData;
+    HANDLE hFind = FindFirstFileA(szModName, &moduleFileData);
+    if (hFind == INVALID_HANDLE_VALUE) {
+        stdlog("Error finding file %s: %lu\n", szModName, GetLastError());
+        goto err;
+    }
+    FindClose(hFind);
+    if (openExisting) {
+        DbgFileMapHeader hdr;
+        if (!moduleData->info.Read(&hdr, sizeof(hdr)))
+            goto err;
+        if (!DbgFileMapHeaderValid(moduleFileData, hdr))
+            goto err;
+        if (!moduleData->data.Read(&hdr, sizeof(hdr)))
+            goto err;
+        if (!DbgFileMapHeaderValid(moduleFileData, hdr))
+            goto err;
+        if (!moduleData->info.Map() || !moduleData->data.Map())
+        {
+            stdlog("Failed to open map for existing files for %s\n", szModName);
+            goto err;
+        }
+        moduleData->info.SetHeaderSize(sizeof(hdr));
+        CheckDbgSettings(moduleData);
+    }
+    else {
+        DbgFileMapHeader hdr;
+        hdr.ftLastWriteTime = moduleFileData.ftLastWriteTime;
+        hdr.crcDbgSettings = 0;
+        if (!moduleData->info.Write(&hdr, sizeof(hdr)))
+            goto err;
+        if (!moduleData->data.Write(&hdr, sizeof(hdr)))
+            goto err;
+        moduleData->info.SetHeaderSize(sizeof(hdr));
+    }
+    return true;
+err:
+    return false;
+}
+
+bool DbgInfo::AddModule(const CmdModule* cmdModule)
+{
+    Dbg dbg;
+    ModuleData* moduleData = new ModuleData(cmdModule);
+
+    if (OpenFileMaps(moduleData, cmdModule->szModName, true))
+    {
+        goto ok;
+    }
+    if (!OpenFileMaps(moduleData, cmdModule->szModName, false))
+    {
+        stdlog("Failed to create FileMaps for %s\n", cmdModule->szModName);
+        goto err;
+    }
+    if (!dbg.Init(moduleData, cmdModule->szModName))
+    {
+        stdlog("Failed to init dbg for %\n", cmdModule->szModName);
+        goto err;
+    }
+    if (!moduleData->info.Map() || !moduleData->data.Map())
+    {
+        stdlog("Failed to map dbg files for %s\n", cmdModule->szModName);
+        goto err;
+    }
+    DbgFuncInfo* first = &moduleData->info[0];
+    DbgFuncInfo* last = &moduleData->info[moduleData->info.Count() - 1];
+    std::sort(first, last, [](const DbgFuncInfo& a, const DbgFuncInfo& b) {
+        return a.addrStart < b.addrStart;
+    });
+
+    DbgFileMapHeader* hdr;
+    hdr = (DbgFileMapHeader*)moduleData->info.m_ptr;
+    hdr->magic = DbgFileMapHeaderMagic;
+    hdr = (DbgFileMapHeader*)moduleData->data.m_ptr;
+    hdr->magic = DbgFileMapHeaderMagic;
+    moduleData->info.UnMap(true);
+    moduleData->data.UnMap(true);
+    if (!OpenFileMaps(moduleData, cmdModule->szModName, true))
+    {
+        stdlog("Failed to reopen file maps for %s\n", cmdModule->szModName);
+        goto err;
+    }
+
+ok:
+    arModuleData.push_back(moduleData);
+    moduleData->ready = true;
+    return true;
+err:
+    if (moduleData) {
+        delete moduleData;
+    }
+    return false;
+}
+
+Dbg::Dbg()
 {
     ZeroMemory(this, sizeof(*this));
-    m_pMemBuf = pMemBuf;
-    m_pDbgFuncInfo = pDbgFuncInfo;
-    m_BaseOfDll = BaseOfDll;
-	DWORD startIndex = pDbgFuncInfo->Count();
+}
+
+bool Dbg::Init(ModuleData* _moduleData, const char* szModName)
+{
+    m_moduleData = _moduleData;
+
     m_dwMachineType = CV_CFL_80386;
-	m_moduleName = Helpers::char_to_wstring(szModName);
     m_pLineArray = new BigArray<DbgLineInfo>(1024 * 1024);
 
     CoInitialize(NULL);
-    if (!LoadDataFromPdb())
+    if (!LoadDataFromPdb(szModName))
     {
         stdlog("Failed to load pdb for %s\n", szModName);
-        LineCount = 0;
+        return false;
     }
     else if (!DumpAllLines())
     {
         stdlog("Failed to get lines of %s\n", szModName);
         LineCount = 0;
-    }
-    else if (!m_pDbgFuncInfo->Count())
-    {
-        stdlog("No line info for %s\n", szModName);
     }
 
     if (m_pGlobalSymbol) {
@@ -94,28 +379,19 @@ Dbg::Dbg(DWORD64 BaseOfDll, char* szModName, MemBuf* pMemBuf, PtrArray<DbgFuncIn
 		m_pDiaDataSource->Release();
 		m_pDiaDataSource = NULL;
 	}
-
     delete m_pLineArray;
     CoUninitialize();
-	if (dump)
-	{
-		stdlog("Dump of %s (m_BaseOfDll: %p)\n", szModName, m_BaseOfDll);
-		DWORD endIndex = pDbgFuncInfo->Count();
-		for (DWORD i = startIndex; i < endIndex; i++)
-		{
-			DbgFuncInfo *p = pDbgFuncInfo->Get(i);
-			stdlog("~%d %s %p %p\n", i, p->fnName, p->GetAddrStart(), p->GetAddrEnd());
-		}
-	}
+    return LineCount != 0;
 }
 
-bool Dbg::LoadDataFromPdb()
+bool Dbg::LoadDataFromPdb(const char* szModName)
 {
+    std::wstring str_moduleName = Helpers::char_to_wstring(szModName);
+    const wchar_t* szModuleName = str_moduleName.c_str();
     wchar_t wszExt[MAX_PATH];
     wchar_t *wszSearchPath = L"SRV**\\\\symbols\\symbols"; // Alternate path to search for debug data
     DWORD dwMachType = 0;
     HRESULT hr;
-    const wchar_t* szModuleName = m_moduleName.c_str();
 
     // Obtain access to the provider
 
@@ -216,6 +492,7 @@ bool Dbg::DumpAllLines()
     IDiaSymbol *pCompiland;
     ULONG celt = 0;
     bool ret = true;
+    srcNameLast[0] = 0;
 
     while (ret && SUCCEEDED(pEnumSymbols->Next(1, &pCompiland, &celt)) && (celt == 1)) {
 
@@ -231,23 +508,19 @@ bool Dbg::DumpAllLines()
 				m_pLineArray->Clear();
 
                 EnumFunctionLines(pFunction);
+                if (gDbgLoadStatus.stop) {
+                    ret = false;
+                    break;
+                }
+                if (gDbgLoadStatus.cFunctionsLoaded++ % 100 == 0)
+                    Helpers::UpdateDbgLoadStatus();
+                if (m_CurInfo.fnNameOffset && m_CurInfo.cLine) {
+                    m_CurInfo.lineInfoOffset = m_moduleData->data.Add(m_pLineArray->Get(0), m_CurInfo.cLine * sizeof(DbgLineInfo));
+                    m_CurInfo.addrStart = m_pLineArray->Get(0)->addr;
+                    m_CurInfo.addrEnd = m_pLineArray->Get(m_pLineArray->Count() - 1)->addr + m_pLineArray->Get(m_pLineArray->Count() - 1)->dwLength;
+                    m_moduleData->info.Add(&m_CurInfo);
+                    LineCount += m_CurInfo.cLine;
 
-                if (m_CurInfo.fnName && m_CurInfo.cLine) {
-                    m_CurInfo.pLineInfo = m_pMemBuf->New<DbgLineInfo>(m_CurInfo.cLine, false);
-                    if (!m_CurInfo.pLineInfo)
-                    {
-                        stdlog("Not enought memory to load debug info\n");
-                        ret = false;
-                        break;
-                    }
-                    memcpy(m_CurInfo.pLineInfo, m_pLineArray->Get(0), m_CurInfo.cLine * sizeof(DbgLineInfo));
-                    if (!m_pDbgFuncInfo->Add(m_CurInfo))
-                    {
-                        stdlog("Not enought memory to load debug info\n");
-                        ret = false;
-                        break;
-                    }
-					LineCount += m_CurInfo.cLine;
 				}
                 pFunction->Release();
             }
@@ -261,7 +534,7 @@ bool Dbg::DumpAllLines()
 }
 
 
-static char* ShortName(char* name, size_t& cb)
+static char* ShortName(char* name, DWORD& cb)
 {
     char* pDelim1 = strstr(name, "::");
     char* pDelim2 = nullptr, *pShort = nullptr;
@@ -271,7 +544,7 @@ static char* ShortName(char* name, size_t& cb)
     }
     if (pShort) {
         pShort += 2;
-        cb -= pShort - name;
+        cb -= (DWORD)(pShort - name);
     }
     else {
         pShort = name;
@@ -279,15 +552,12 @@ static char* ShortName(char* name, size_t& cb)
     return pShort;
 }
 
-#ifdef _DEBUG
-char strFnName[MAX_PATH];
-#endif
 void Dbg::EnumFunctionLines(IDiaSymbol *pFunction)
 {
     DWORD dwSymTag;
 
     if ((pFunction->get_symTag(&dwSymTag) != S_OK) || (dwSymTag != SymTagFunction)) {
-        stdlog("ERROR - EnumFunctionLines() dwSymTag != SymTagFunction\n");
+        //stdlog("ERROR - EnumFunctionLines() dwSymTag != SymTagFunction\n");
         return;
     }
 
@@ -301,22 +571,22 @@ void Dbg::EnumFunctionLines(IDiaSymbol *pFunction)
             SysFreeString(bstrName);
             return;
         }
-        cbFuncName = WideCharToMultiByte(CP_ACP, 0, bstrName, -1, NULL, 0, NULL, NULL);
-        if (cbFuncName <= 0 || cbFuncName >= MAX_FUNC_NAME_LEN) {
-            stdlog("ERROR - WideCharToMultiByte\n");
+        cbFuncName = WideCharToMultiByte(CP_ACP, 0, bstrName, -1, fnName, _countof(fnName) - 1, NULL, NULL);
+        if (cbFuncName <= 0 || cbFuncName >= _countof(fnName)) {
+            //stdlog("ERROR - WideCharToMultiByte\n");
             SysFreeString(bstrName);
             return;
         }
 #ifdef _DEBUG
-		WideCharToMultiByte(CP_ACP, 0, bstrName, -1, strFnName, MAX_PATH - 1, NULL, NULL);
-		if (strstr(strFnName, szOneFunc))
-		{
-			szOneFunc = szOneFunc;
-		}
+  //      wchar_t* szOneFunc = L"std::_Ptr_base<winrt::XamlTypeInfo::implementation::XamlMetaDataProvider>::_Ptr_base<winrt::XamlTypeInfo::implementation::XamlMetaDataProvider>";
+		//if (wcsstr(bstrName, szOneFunc))
+		//{
+		//	szOneFunc = szOneFunc;
+		//}
 #endif
     }
     else {
-        stdlog("ERROR - EnumFunctionLines() get_name\n");
+        //stdlog("ERROR - EnumFunctionLines() get_name\n");
         return;
     }
 
@@ -358,15 +628,13 @@ void Dbg::EnumFunctionLines(IDiaSymbol *pFunction)
 
 
     if (m_CurInfo.cLine > 0) {
-        m_CurInfo.fnName = m_pMemBuf->New<char>(cbFuncName, false);
-        WideCharToMultiByte(CP_ACP, 0, bstrName, -1, m_CurInfo.fnName, cbFuncName, NULL, NULL);
-        m_CurInfo.cb_fnName = cbFuncName - 1;
-		char* p1 = m_CurInfo.fnName;
+        m_CurInfo.fnNameOffset = m_moduleData->data.Add(fnName, cbFuncName);
+		char* p1 = fnName;
 		char* p2 = strchr(p1, '<');
 		//if (strstr(p1, "stdext::checked_array_iterator<winrt::Windows::UI::Xaml::Markup::XmlnsDefinition *>::operator<"))
 		//	p2 = p2;
 		if (p2 && cbFuncName > 2) {
-			// use bstrName to evaluate function short name
+			// use bstrName as a temp buffer to evaluate function short name
 			char *shortFnName = (char*)bstrName;
 			size_t cb = 0;
 			char *pEnd = p1 + cbFuncName;
@@ -410,79 +678,21 @@ void Dbg::EnumFunctionLines(IDiaSymbol *pFunction)
             if (cb <= 1)
                 cb = 2;
             shortFnName[cb] = 0;
-            char* pShort = ShortName(shortFnName, cb);
-			m_CurInfo.cb_shortFnName = DWORD(cb - 1);
-			m_CurInfo.shortFnName = m_pMemBuf->New<char>(cb, false);
-			memcpy(m_CurInfo.shortFnName, pShort, m_CurInfo.cb_shortFnName);
-			m_CurInfo.shortFnName[m_CurInfo.cb_shortFnName] = 0;
+            m_CurInfo.shortFnNameSize = cbFuncName - 1;
+            ShortName(shortFnName, m_CurInfo.shortFnNameSize);
 			p2 = p2;
         } 
         else {
-            size_t cb = m_CurInfo.cb_fnName;
-            char* pShort = ShortName(m_CurInfo.fnName, cb);
-            m_CurInfo.shortFnName = pShort;
-            m_CurInfo.cb_shortFnName = (DWORD)cb;
+            m_CurInfo.shortFnNameSize = cbFuncName - 1;
+            ShortName(fnName, m_CurInfo.shortFnNameSize);
         }
 
-		m_CurInfo.attr = GetAttr(m_CurInfo.fnName);
-        if (!m_CurInfo.pathIncluded) {
-            if (!m_CurInfo.attr && !(m_CurInfo.attr & LOG_ATTR_SHOW_FUNC)) {
-                m_CurInfo.cLine = 0;
-            }
-        }
+        //if (strstr(m_CurInfo.fnName, "dynamic ")) {
+        //    stdlog("fn: %s\n", m_CurInfo.fnName);
+        //}
     }
 
     SysFreeString(bstrName);
-}
-
-BYTE Dbg::GetAttr(char *szFunc)
-{
-	if (gSettings.m_DbgSettings.m_applyFuncFilters)
-	{
-		std::vector<DbgFilter>& arDbgFilter = gSettings.m_DbgSettings.m_arDbgFilter;
-		size_t c = arDbgFilter.size();
-		for (size_t i = 0; i < c; i++)
-		{
-			if (!arDbgFilter[i].m_skipFilter)
-			{
-				if (strstr(szFunc, arDbgFilter[i].m_szFunc))
-				{
-					if (arDbgFilter[i].m_showFunc == 0)
-                        return LOG_ATTR_SKIP_FUNC;
-                    else
-                        return LOG_ATTR_SHOW_FUNC;
-                }
-			}
-		}
-	}
-	return 0;
-}
-
-bool Dbg::PathIncluded(char *szPath)
-{
-	if (gSettings.m_DbgSettings.m_applyPathFilters)
-	{
-		std::vector<DbgSource>& arDbgSources = gSettings.m_DbgSettings.m_arDbgSources;
-		size_t c = arDbgSources.size();
-		if (c > 0)
-		{
-			bool haveIncl = false;
-			bool included = false;
-			for (size_t i = 0; i < c; i++)
-			{
-				haveIncl = haveIncl || !(arDbgSources[i].m_exclSrc);
-				if (StrStrIA(szPath, arDbgSources[i].m_szSrc))
-				{
-					if (arDbgSources[i].m_exclSrc)
-						return false;
-					else
-						included = true;
-				}
-			}
-			return included || !haveIncl;
-		}
-	}
-	return true;
 }
 
 bool Dbg::SetCurSource(IDiaLineNumber *pLine)
@@ -495,22 +705,15 @@ bool Dbg::SetCurSource(IDiaLineNumber *pLine)
 	{
 		if (pSource->get_fileName(&bstrSourceName) == S_OK)
 		{
-			char strBuf[4 * MAX_PATH];
+			char strBuf[MAX_SRC_NAME_LEN];
 			strBuf[0] = 0;
-			int cb = WideCharToMultiByte(CP_ACP, 0, bstrSourceName, -1, NULL, 0, NULL, NULL);
+			int cb = WideCharToMultiByte(CP_ACP, 0, bstrSourceName, -1, strBuf, _countof(strBuf) - 1, NULL, NULL);				
 			if (cb > 0 && cb < _countof(strBuf))
-				WideCharToMultiByte(CP_ACP, 0, bstrSourceName, -1, strBuf, cb, NULL, NULL);
-			if (strBuf[0] != 0)
 			{
-				if (!m_srcNameLast || 0 != strcmp(strBuf, m_srcNameLast))
+				if (0 != strcmp(strBuf, srcNameLast))
 				{
-					m_srcNameLast = m_pMemBuf->New<char>(cb, false);
-					memcpy(m_srcNameLast, strBuf, cb);
-					m_srcShortNameLast = strrchr(m_srcNameLast, '\\');
-					if (!m_srcShortNameLast)
-						m_srcShortNameLast = m_srcNameLast;
-					else
-						m_srcShortNameLast++;
+					memcpy(srcNameLast, strBuf, cb);
+                    srcNameOffset = m_moduleData->data.Add(srcNameLast, cb );
 				}
 				ret = true;
 			}
@@ -568,21 +771,20 @@ void Dbg::EnumLineNumbers(IDiaEnumLineNumbers *pLines)
             {
 				pDbgLineInfo->dwSrcId = dwSrcId;
                 pDbgLineInfo->line = dwLinenum;
-                pDbgLineInfo->addr = dwRVA + m_BaseOfDll;
+                pDbgLineInfo->addr = dwRVA;
                 pDbgLineInfo->dwLength = dwLength;
-				pDbgLineInfo->srcName = m_srcNameLast;
-				pDbgLineInfo->srcShortName = m_srcShortNameLast;
+				pDbgLineInfo->srcNameOffset = srcNameOffset;
 				if (m_CurInfo.cLine > 1) {
-                    if ((pDbgLineInfo-1)->addr >= pDbgLineInfo->addr)
-                        stdlog("ERROR address is not incremented\n");
-                    if ((pDbgLineInfo - 1)->addr + (pDbgLineInfo - 1)->dwLength > pDbgLineInfo->addr)
-                        stdlog("ERROR address overlaped\n");
+                    //if ((pDbgLineInfo-1)->addr >= pDbgLineInfo->addr)
+                    //    stdlog("ERROR address is not incremented\n");
+                    //if ((pDbgLineInfo - 1)->addr + (pDbgLineInfo - 1)->dwLength > pDbgLineInfo->addr)
+                    //    stdlog("ERROR address overlaped\n");
                 }
 				m_CurInfo.cLine++;
             }
             else
             {
-                stdlog("ERROR m_pLineArray->Add\n");
+                stdlog("ERROR too many lines in function\n");
 				m_CurInfo.cLine = 0;
 				break;
             }
@@ -591,19 +793,81 @@ void Dbg::EnumLineNumbers(IDiaEnumLineNumbers *pLines)
 		pLine = nullptr;
 	}
 
-	dwSrcIdLast = -1;
-	bool pathIncluded = false;
-	for (DWORD i = 0; i < m_CurInfo.cLine; i++)
-	{
-		if (m_pLineArray->Get(i)->dwSrcId != dwSrcIdLast)
-		{
-			dwSrcIdLast = m_pLineArray->Get(i)->dwSrcId;
-			pathIncluded = pathIncluded || PathIncluded(m_pLineArray->Get(i)->srcName);
-		}
-	}
-
-    m_CurInfo.pathIncluded = pathIncluded;
-
 	if (pLine)
 		pLine->Release();
+}
+
+static int PathIncluded(char* szPath)
+{
+    int attr = 0;
+    if (gSettings.m_DbgSettings.m_applyPathFilters)
+    {
+        std::vector<DbgSource>& arDbgSources = gSettings.m_DbgSettings.m_arDbgSources;
+        size_t c = arDbgSources.size();
+        if (c > 0)
+        {
+            char* appliedSrc = nullptr;
+            int appliedPriority = 0;
+            for (size_t i = 0; i < c; i++)
+            {
+                if (!arDbgSources[i].m_skipSrc && StrStrIA(szPath, arDbgSources[i].m_szSrc))
+                {
+                    if (!appliedSrc || !StrStrIA(szPath, appliedSrc) || arDbgSources[i].m_Priority >= appliedPriority)
+                    {
+                        if (arDbgSources[i].m_showSrc == 0)
+                            attr = LOG_ATTR_SKIP_FUNC;
+                        else if (arDbgSources[i].m_showSrc == 1)
+                            attr = LOG_ATTR_SHOW_FUNC;
+                        else
+                            attr = LOG_ATTR_HIDE_FUNC;
+                        appliedSrc = arDbgSources[i].m_szSrc;
+                        appliedPriority = arDbgSources[i].m_Priority;
+                    }
+                }
+            }
+        }
+    }
+    return attr;
+}
+
+BYTE GetAttr(char* szFunc)
+{
+    int attr = 0;
+    if (gSettings.m_DbgSettings.m_applyFuncFilters)
+    {
+        std::vector<DbgFilter>& arDbgFilter = gSettings.m_DbgSettings.m_arDbgFilter;
+        size_t c = arDbgFilter.size();
+        int appliedPriority = -1;
+        for (size_t i = 0; i < c; i++)
+        {
+            if (!arDbgFilter[i].m_skipFilter)
+            {
+                bool contains = false;
+                if (arDbgFilter[i].m_szFunc[0] == '=')
+                    contains = (0 == strcmp(szFunc, arDbgFilter[i].m_szFunc + 1));
+                else if (arDbgFilter[i].m_szFunc[0] == '<')
+                    contains = (0 == strncmp(szFunc, arDbgFilter[i].m_szFunc + 1, strlen(arDbgFilter[i].m_szFunc + 1)));
+                else if (arDbgFilter[i].m_szFunc[0] == '>') {
+                    int pos = (int)strlen(szFunc) - (int)strlen(arDbgFilter[i].m_szFunc + 1);
+                    if (pos >= 0)
+                        contains = (0 == strcmp(szFunc + pos, arDbgFilter[i].m_szFunc + 1));
+                }
+                else
+                    contains = strstr(szFunc, arDbgFilter[i].m_szFunc);
+                if (contains && arDbgFilter[i].m_Priority > appliedPriority)
+                {
+                    if (arDbgFilter[i].m_showFunc == 0)
+                        attr = LOG_ATTR_SKIP_FUNC;
+                    else if (arDbgFilter[i].m_showFunc == 1)
+                        attr = LOG_ATTR_SHOW_FUNC;
+                    else if (arDbgFilter[i].m_showFunc == 2)
+                        attr = LOG_ATTR_HIDE_FUNC;
+                    else if (arDbgFilter[i].m_showFunc == 3)
+                        attr = LOG_ATTR_EXPAND_FUNC;
+                    appliedPriority = arDbgFilter[i].m_Priority;
+                }
+            }
+        }
+    }
+    return attr;
 }

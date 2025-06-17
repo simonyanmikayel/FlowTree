@@ -337,7 +337,7 @@ private:
 template <typename Type> class BigArray
 {
 public:
-	BigArray(size_t maxCount) : m_maxCount(maxCount), m_Count(0)
+	BigArray(DWORD maxCount) : m_maxCount(maxCount), m_Count(0)
 	{
 		m_Array = new Type[maxCount];
 	}
@@ -359,7 +359,7 @@ public:
 		return &m_Array[m_Count++];
 	}
 
-	size_t Count() 
+	DWORD Count()
 	{ 
 		return m_Count; 
 	}
@@ -372,7 +372,7 @@ public:
 		return &m_Array[i];
 	}
 private:
-	size_t m_Count;
-	size_t m_maxCount;
+	DWORD m_Count;
+	DWORD m_maxCount;
 	Type *m_Array;
 };

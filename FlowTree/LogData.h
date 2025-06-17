@@ -35,8 +35,8 @@ struct LOG_NODE
         WORD expanded : 1;
         WORD hasNodeBox : 1;
         WORD pathExpanded : 1;
-        WORD bookmark : 1;
     };
+    BYTE bookmark;
     BYTE nextChankCounter;
     int cExpanded;
     int line;
@@ -101,12 +101,9 @@ struct LOG_NODE
     FLOW_NODE* getPeer();
     bool isSynchronized(LOG_NODE* pSyncNode);
     int getNN();
-    LONG getTimeSec();
-    LONG getTimeMSec();
     int   getPid();
 	int   getThreadNN();
     DWORD64 getCallAddr();
-    int   getCallLine();
     CHAR* getTreeText(int* cBuf = NULL, bool extened = true);
     CHAR* getListText(int* cBuf, LIST_COL col);
     THREAD_NODE* getTrhread();
@@ -114,13 +111,13 @@ struct LOG_NODE
     ROOT_NODE* getRoot();
     int getTreeImage();
     FLOW_NODE* getSyncNode();
-	char* getFnName(bool forceFullName = false);
-    int getFnNameSize(bool forceFullName = false);
+    // int getFnNameSize(bool forceFullName = false);
     int getTraceText(char* pBuf, int max_cb_trace);
     bool CheckAll(bool check, bool recursive = false);
     bool ShowOnlyThis();
     bool CheckNode(bool check);
-
+    int  getCallLine();
+	char* getFnName(bool forceFullName = false);
 };
 
 struct ROOT_NODE : LOG_NODE
@@ -135,8 +132,7 @@ struct APP_NODE : LOG_NODE
 	DbgInfo* pDbgInfo;
 	char* appPath;
 	char* appName;
-	DbgFuncInfo* GetFuncInfo(DWORD i) { return pDbgInfo->FuncInfo()->Get(i); }
-	DbgFuncInfo* GetFuncInfoByAddr(DWORD64 callAddr);
+	bool findAddr(DWORD64 addr, DWORD& funcId, WORD& moduleId);
 };
 
 struct THREAD_NODE : LOG_NODE
@@ -168,30 +164,28 @@ struct INFO_NODE : LOG_NODE
 	int nn;
     int log_type;
 	DWORD tickCount;
-    bool isEnter() { return log_type == LOG_TYPE_ENTER; }
-    bool isTrace() { return log_type == LOG_TYPE_TRACE; }
+    bool isEnterType() { return log_type == LOG_TYPE_ENTER; }
 	void SetCallLine( int i) { callLine = i; }
-protected:
 	int callLine;
+	char* getCallSrc(bool fullPath);
 };
 
-struct FLOW_NODE : INFO_NODE
+struct FLOW_NODE : public INFO_NODE
 {
     FLOW_NODE* peer;
+    WORD moduleId;
 	DWORD funcId;
 	DWORD64 funcAddr;
 	DWORD64 callAddr;
-	DWORD cbFnName(bool forceFullName = false);
-	char* fnName(bool forceFullName = false);
-	DbgFuncInfo* GetFuncInfo();
+	// DWORD cbFnName(bool forceFullName = false);
+    ModuleData* GetModuleData();
 	int GetFuncLine();
 	char* getFuncSrc(bool fullPath);
-	int GetCallLine();
-	char* getCallSrc(bool fullPath);
-	bool isOpenEnter() { return isEnter() && peer == 0; }
+	bool isOpenEnter() { return isEnterType() && peer == 0; }
     void addToTree();
 	void CopyFuncNamme();
 	void CopyFuncInfo();
+    DbgLineInfo* GetLineInfo();
 };
 
 struct TRACE_CHANK
@@ -201,14 +195,15 @@ struct TRACE_CHANK
     char trace[1];
 };
 
-struct TRACE_NODE : INFO_NODE
+struct TRACE_NODE : public INFO_NODE
 {
     int MsgType;
     int cb_trace;
+    int cb_src_name;
 	int cb_fn_name;
-	int GetCallLine() { return callLine; }
-	char* fnName() { return ((char*)(this)) + sizeof(TRACE_NODE); }
-	TRACE_CHANK* getFirestChank() { return (TRACE_CHANK*)(fnName() + cb_fn_name); }
+    char* tarce_srcName() { return ((char*)(this)) + sizeof(TRACE_NODE); }
+    char* tarce_fnName() { return (tarce_srcName() + cb_src_name + 1); }
+	TRACE_CHANK* getFirestChank() { return (TRACE_CHANK*)(tarce_fnName() + cb_fn_name + 1); }
     TRACE_CHANK* getLastChank() { TRACE_CHANK* p = getFirestChank(); while (p->next_chank) p = p->next_chank; return p; }
 };
 

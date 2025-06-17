@@ -91,7 +91,7 @@ LRESULT CLogListInfo::OnPaint(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*
 			}
 			if (pNode->isFlow())
 			{
-				if (((FLOW_NODE*)pNode)->isEnter())
+				if (((FLOW_NODE*)pNode)->isEnterType())
 					ImageList_Draw(m_hListImageList, ICON_INDEX_LIST_ENTER, memDC, x, y, ILD_NORMAL);
 				else
 					ImageList_Draw(m_hListImageList, ICON_INDEX_LIST_EXIT, memDC, x, y, ILD_NORMAL);

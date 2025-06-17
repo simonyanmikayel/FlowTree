@@ -32,4 +32,5 @@ public:
 	LRESULT OnBnClickedButtonsaveAs(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	void FillGrids(DbgSettings &dbgSettings);
 	bool WriteDbgSettings(char* szFilterPath, DbgSettings &dbgSettings);
+	void EndEditing(bool abort);
 };

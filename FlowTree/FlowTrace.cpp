@@ -40,6 +40,8 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 {
   //stdlog("hi\n");
 
+  SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
+
   HRESULT hRes = ::CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
   ATLASSERT(SUCCEEDED(hRes));
 
