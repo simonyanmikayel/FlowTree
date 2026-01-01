@@ -7,12 +7,17 @@
 #include "Settings.h"
 #include "comdef.h"
 
+struct Filter {
+    BYTE attr;
+    int level;
+};
+
 char fnName[MAX_FUNC_NAME_LEN + 1] = {0};
 char srcNameLast[MAX_SRC_NAME_LEN + 1] = { 0 };
 DWORD  srcNameOffset = 0;
 DbgLoadStatus gDbgLoadStatus;
-static int PathIncluded(char* szPath);
-static BYTE GetAttr(char* szFunc);
+static Filter PathIncluded(char* szPath);
+static Filter GetAttr(char* szFunc);
 
 class Dbg
 {
@@ -201,7 +206,7 @@ void DbgInfo::CheckDbgSettings(ModuleData* moduleData)
     hdrData = (DbgFileMapHeader*)moduleData->data.m_ptr;
     if (hdrInfo->crcDbgSettings != crcDbgSettings || hdrData->crcDbgSettings != crcDbgSettings)
     {
-        int pathAttr = 0;
+        Filter src_filter{ 0,0 };
         srcNameLast[0] = 0;
         DWORD funcCount = (DWORD)moduleData->info.Count();
         for (DWORD funcId = 0; funcId < funcCount; funcId++)
@@ -215,13 +220,14 @@ void DbgInfo::CheckDbgSettings(ModuleData* moduleData)
             if (0 != strcmp(src, srcNameLast))
             {
                 strncpy_s(srcNameLast, src, MAX_SRC_NAME_LEN);
-                pathAttr = PathIncluded(srcNameLast);
+                src_filter = PathIncluded(srcNameLast);
             }
-            pDbgFuncInfo->attr = GetAttr(fnName);
-            if (pathAttr) {
-                if (!pDbgFuncInfo->attr) {
-                    pDbgFuncInfo->attr = pathAttr;
-                }
+            Filter fnc_filter = GetAttr(fnName);
+            if (src_filter.attr && src_filter.level > fnc_filter.level) {
+                pDbgFuncInfo->attr = src_filter.attr;
+            }
+            else {
+                pDbgFuncInfo->attr = fnc_filter.attr;
             }
         }
         hdrInfo->crcDbgSettings = crcDbgSettings;
@@ -303,7 +309,7 @@ bool DbgInfo::AddModule(const CmdModule* cmdModule)
     }
     if (!dbg.Init(moduleData, cmdModule->szModName))
     {
-        stdlog("Failed to init dbg for %\n", cmdModule->szModName);
+        stdlog("Failed to init dbg for %s\n", cmdModule->szModName);
         goto err;
     }
     if (!moduleData->info.Map() || !moduleData->data.Map())
@@ -402,9 +408,9 @@ bool Dbg::LoadDataFromPdb(const char* szModName)
         (void **)(&m_pDiaDataSource));
 
     if (FAILED(hr)) {
-        stdlog("CoCreateInstance failed - HRESULT = %08X\n", hr);
-        _com_error err(hr);
-        LPCTSTR errMsg = err.ErrorMessage();
+        std::string err = Helpers::CommErr(hr);
+        stdlog("CoCreateInstance failed - HRESULT = %08X %s\n", hr, err.c_str());
+        stdlog("register msdia140.dll\n"); 
         return false;
     }
 
@@ -797,9 +803,9 @@ void Dbg::EnumLineNumbers(IDiaEnumLineNumbers *pLines)
 		pLine->Release();
 }
 
-static int PathIncluded(char* szPath)
+static Filter PathIncluded(char* szPath)
 {
-    int attr = 0;
+    Filter f{0,0};
     if (gSettings.m_DbgSettings.m_applyPathFilters)
     {
         std::vector<DbgSource>& arDbgSources = gSettings.m_DbgSettings.m_arDbgSources;
@@ -815,11 +821,12 @@ static int PathIncluded(char* szPath)
                     if (!appliedSrc || !StrStrIA(szPath, appliedSrc) || arDbgSources[i].m_Priority >= appliedPriority)
                     {
                         if (arDbgSources[i].m_showSrc == 0)
-                            attr = LOG_ATTR_SKIP_FUNC;
+                            f.attr = LOG_ATTR_SKIP_FUNC;
                         else if (arDbgSources[i].m_showSrc == 1)
-                            attr = LOG_ATTR_SHOW_FUNC;
+                            f.attr = LOG_ATTR_SHOW_FUNC;
                         else
-                            attr = LOG_ATTR_HIDE_FUNC;
+                            f.attr = LOG_ATTR_HIDE_FUNC;
+                        f.level = arDbgSources[i].m_Priority;
                         appliedSrc = arDbgSources[i].m_szSrc;
                         appliedPriority = arDbgSources[i].m_Priority;
                     }
@@ -827,12 +834,12 @@ static int PathIncluded(char* szPath)
             }
         }
     }
-    return attr;
+    return f;
 }
 
-BYTE GetAttr(char* szFunc)
+static Filter GetAttr(char* szFunc)
 {
-    int attr = 0;
+    Filter f{ 0,0 };
     if (gSettings.m_DbgSettings.m_applyFuncFilters)
     {
         std::vector<DbgFilter>& arDbgFilter = gSettings.m_DbgSettings.m_arDbgFilter;
@@ -857,17 +864,18 @@ BYTE GetAttr(char* szFunc)
                 if (contains && arDbgFilter[i].m_Priority > appliedPriority)
                 {
                     if (arDbgFilter[i].m_showFunc == 0)
-                        attr = LOG_ATTR_SKIP_FUNC;
+                        f.attr = LOG_ATTR_SKIP_FUNC;
                     else if (arDbgFilter[i].m_showFunc == 1)
-                        attr = LOG_ATTR_SHOW_FUNC;
+                        f.attr = LOG_ATTR_SHOW_FUNC;
                     else if (arDbgFilter[i].m_showFunc == 2)
-                        attr = LOG_ATTR_HIDE_FUNC;
+                        f.attr = LOG_ATTR_HIDE_FUNC;
                     else if (arDbgFilter[i].m_showFunc == 3)
-                        attr = LOG_ATTR_EXPAND_FUNC;
+                        f.attr = LOG_ATTR_EXPAND_FUNC;
                     appliedPriority = arDbgFilter[i].m_Priority;
+                    f.level = arDbgFilter[i].m_Priority;
                 }
             }
         }
     }
-    return attr;
+    return f;
 }

@@ -34,6 +34,7 @@ public:
   CButton m_btnReset;
   CButton m_FullSrcPath;
   CButton m_FullFnName;
+  CButton m_LogOnlyTraces;
   CButton m_DissableBufferization;
   CButton m_UseTcpForLog;
   //CButton m_IdeType;

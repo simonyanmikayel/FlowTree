@@ -6,7 +6,7 @@
 #define COL_LEN_IGNORE 65
 
 #define COL_FN_NAME "Part of function name"
-#define COL_FN_NCL "Filter"
+#define COL_FN_INCL "Filter"
 #define COL_FN_LEVEL "Level"
 #define COL_FN_IGNORE "Ignore"
 
@@ -39,11 +39,11 @@ LRESULT DlgDebug::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	m_FilterGrid.SetListener(this);
 	m_FilterGrid.SetExtendedGridStyle(GS_EX_CONTEXTMENU);
 	m_FilterGrid.AddColumn(COL_FN_NAME, m_FilterGrid.GetGridClientWidth() - COL_LEN_CMB - COL_LEN_LEVEL - COL_LEN_IGNORE, CGridCtrl::EDIT_TEXT);
-	m_FilterGrid.AddColumn(COL_FN_NCL, COL_LEN_CMB, CGridCtrl::EDIT_DROPDOWNLIST, CGridCtrl::LEFT, VT_I4);
-    m_FilterGrid.AddColumnLookup(COL_FN_NCL, 0, "Skip");
-	m_FilterGrid.AddColumnLookup(COL_FN_NCL, 1, "Show");
-	m_FilterGrid.AddColumnLookup(COL_FN_NCL, 2, "Hide");
-	m_FilterGrid.AddColumnLookup(COL_FN_NCL, 3, "Expand");
+	m_FilterGrid.AddColumn(COL_FN_INCL, COL_LEN_CMB, CGridCtrl::EDIT_DROPDOWNLIST, CGridCtrl::LEFT, VT_I4);
+    m_FilterGrid.AddColumnLookup(COL_FN_INCL, 0, "Skip");
+	m_FilterGrid.AddColumnLookup(COL_FN_INCL, 1, "Show");
+	m_FilterGrid.AddColumnLookup(COL_FN_INCL, 2, "Hide");
+	m_FilterGrid.AddColumnLookup(COL_FN_INCL, 3, "Expand");
 	m_FilterGrid.AddColumn(COL_FN_LEVEL, COL_LEN_LEVEL, CGridCtrl::EDIT_DROPDOWNLIST, CGridCtrl::LEFT, VT_I4);
 	for (char i = 0; i < 10; i++) {
 		char ch[2] = { '0' + i, 0 };
@@ -92,7 +92,7 @@ void DlgDebug::FillGrids(DbgSettings &dbgSettings)
         int showFunc = arDbgFilter[i].m_showFunc;
         if (showFunc < 0) showFunc = 0;
         if (showFunc > 3) showFunc = 3;
-        m_FilterGrid.SetItem(nItem, COL_FN_NCL, showFunc);
+        m_FilterGrid.SetItem(nItem, COL_FN_INCL, showFunc);
 		m_FilterGrid.SetItem(nItem, COL_FN_LEVEL, arDbgFilter[i].m_Priority);
 		m_FilterGrid.SetItem(nItem, COL_FN_IGNORE, arDbgFilter[i].m_skipFilter);
 	}
@@ -143,7 +143,7 @@ bool DlgDebug::WriteDbgSettings(char* szFilterPath, DbgSettings &dbgSettings)
 			strncpy_s(dbgFilter.m_szFunc, szFnName, _countof(dbgFilter.m_szFunc) - 1);
 			dbgFilter.m_szFunc[_countof(dbgFilter.m_szFunc) - 1] = 0;
 
-			vt = m_FilterGrid.GetItem(i, COL_FN_NCL);
+			vt = m_FilterGrid.GetItem(i, COL_FN_INCL);
 			dbgFilter.m_showFunc = (long)vt;
 
 			vt = m_FilterGrid.GetItem(i, COL_FN_LEVEL);
@@ -173,7 +173,7 @@ bool DlgDebug::WriteDbgSettings(char* szFilterPath, DbgSettings &dbgSettings)
 			vt = m_SrcGrid.GetItem(i, COL_SRC_LEVEL);
 			dbgSource.m_Priority = (long)vt;
 
-			vt = m_FilterGrid.GetItem(i, COL_SRC_IGNORE);
+			vt = m_SrcGrid.GetItem(i, COL_SRC_IGNORE);
 			dbgSource.m_skipSrc = vt.pcVal[0] != '0';
 			
 

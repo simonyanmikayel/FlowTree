@@ -471,6 +471,7 @@ void ServerThread::Work(LPVOID pWorkParam)
 				CmdSettings cmdSettings;
 				cmdSettings.DissableBufferization = gSettings.DissableBufferization();
 				cmdSettings.UseTcpForLog = gSettings.UseTcpForLog();
+				cmdSettings.LogOnlyTraces = gSettings.LogOnlyTraces();
 				if (!(res = Send(&cmdSettings, sizeof(cmdSettings))))
 				{
 					IpcErr(TEXT("Failed to send cmdSettings\n"));
@@ -478,14 +479,18 @@ void ServerThread::Work(LPVOID pWorkParam)
 				}
 				modules.clear();
 				CmdInfoSize cmd;
-				std::vector<DbgModule> arDbgModules = gSettings.m_DbgSettings.m_arDbgModules;
+				std::vector<DbgModule> arDbgModules;
+				if (!gSettings.LogOnlyTraces())
+				{
+					arDbgModules = gSettings.m_DbgSettings.m_arDbgModules;
+				}
 				cmd.infoSize = 0;
 				for (DWORD i = 0; i < (DWORD)arDbgModules.size(); i++)
 				{
 					if (!arDbgModules[i].m_skipModule)
 						cmd.infoSize++;
 				}
-				if (cmd.infoSize == 0)
+				if (cmd.infoSize == 0 && !gSettings.LogOnlyTraces())
 				{
 					// use module name from cmdStart
 					DbgModule dbgModule;
@@ -531,12 +536,12 @@ void ServerThread::Work(LPVOID pWorkParam)
 			break;
 			case CMD_PREP_INFO:
 			{
-				if (modules.size() == 0)
-				{
-					IpcErr(TEXT("No module path sent\n"));
-					res = false;
-					break;
-				}
+				//if (modules.size() == 0)
+				//{
+				//	IpcErr(TEXT("No module path sent\n"));
+				//	res = false;
+				//	break;
+				//}
 				ZeroMemory(&gDbgLoadStatus, sizeof(gDbgLoadStatus));
 				gDbgLoadStatus.cModulesTotal = (DWORD)modules.size();
 				Helpers::BlockLogStatus(true);
@@ -546,6 +551,12 @@ void ServerThread::Work(LPVOID pWorkParam)
 					gDbgLoadStatus.cModulesLoading++;
 					gDbgLoadStatus.cFunctionsLoaded = 0;
 					gDbgLoadStatus.cSettingsChecked = 0;
+					char* szModFileName = strrchr(modules[i].szModName, '\\');
+					if (szModFileName)
+						szModFileName++;
+					else
+						szModFileName = modules[i].szModName;
+					strncpy(gDbgLoadStatus.szCurrentModule, szModFileName, MAX_PATH - 1);
 					if (!pDbgInfo->AddModule(&modules[i]))
 					{
 						IpcErr(TEXT("Failed to load symbols for %s\n"), modules[i].szModName);

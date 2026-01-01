@@ -39,6 +39,7 @@ struct CmdSettings : Cmd
 	CmdSettings() : Cmd(CMD_SETTINGS) {}
 	DWORD DissableBufferization;
 	DWORD UseTcpForLog;
+	DWORD LogOnlyTraces;
 };
 struct CmdModule : Cmd
 {
@@ -134,6 +135,7 @@ struct DbgLoadStatus
 	DWORD cModulesLoading;
 	DWORD cFunctionsLoaded;
 	DWORD cSettingsChecked;
+	char szCurrentModule[MAX_PATH];
 };
 extern DbgLoadStatus gDbgLoadStatus;
 

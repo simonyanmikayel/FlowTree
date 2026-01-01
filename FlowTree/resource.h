@@ -4,6 +4,8 @@
 //
 #define IDD_ABOUTBOX                    100
 #define IDR_MAINFRAME                   128
+#define IDR_TOOLBAR1                    129
+#define IDR_TOOLBAR2                    130
 #define IDI_ICON_TREE_ROOT              502
 #define IDI_ICON_TREE_APP               503
 #define IDI_ICON_TREE_THREAD            504
@@ -71,6 +73,8 @@
 #define IDC_CHECK_SHOW_ELAPSED_TIME     1027
 #define IDC_CHECK_USETCPFORLOG          1027
 #define IDC_LINE_NN                     1028
+#define IDC_CHECK_FULL_FN_NAME3         1028
+#define IDC_CHECK_LOG_ONLY_TRACES       1028
 #define IDC_LIST2                       1029
 #define IDC_EDIT_COMMENT                1040
 #define IDC_COMBO1                      1041
@@ -96,7 +100,6 @@
 #define IDC_RADIO_QT                    1215
 #define IDC_RADIO_CLION                 1216
 #define IDC_EDIT_CLION_PATH             1217
-#define IDC_STATIC_USING_PIPE           1218
 #define ID_VIEW_SHOW_HIDE_STACK         32774
 #define ID_VIEW_SHOW_HIDE_TREE          32775
 #define ID_VIEW_RESUMERECORDIG          32776

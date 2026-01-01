@@ -75,7 +75,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
     // attach menu
     m_CmdBar.AttachMenu(GetMenu());
     // load command bar images
-    m_CmdBar.LoadImages(IDR_MAINFRAME);
+    m_CmdBar.LoadImages(IDR_TOOLBAR2);
     // remove old menu
     SetMenu(NULL);
 
@@ -83,11 +83,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
     CreateSimpleReBar(ATL_SIMPLE_REBAR_NOBORDER_STYLE);
     AddSimpleReBarBand(hWndCmdBar);
 
-    HWND hWndToolBar = CreateSimpleToolBarCtrl(m_hWnd, IDR_MAINFRAME, FALSE, ATL_SIMPLE_TOOLBAR_PANE_STYLE);
-    m_searchbar = hWndToolBar;
-
-    AddSimpleReBarBand(hWndToolBar, NULL, FALSE);
-    SizeSimpleReBarBands();
+    m_searchbar = CreateSimpleToolBarCtrl(m_hWnd, IDR_TOOLBAR1, FALSE, ATL_SIMPLE_TOOLBAR_PANE_STYLE);
     if (1)
     {
         ////////////////
@@ -109,61 +105,59 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 
         rcSearcResult = rcButton0;
         rcSearcResult.top += 4;
-        rcSearcResult.right = rcSearcResult.left + 4 * GetSystemMetrics(SM_CXSMICON) - 4;
+        rcSearcResult.right = rcSearcResult.left + 5 * GetSystemMetrics(SM_CXSMICON) - 4;
         m_searchResult.Create(m_hWnd, rcSearcResult, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | ES_RIGHT);// | WS_BORDER
         m_searchResult.SetFont((HFONT)GetStockObject(DEFAULT_GUI_FONT), FALSE);
-        m_searchResult.SetParent(hWndToolBar);
+        m_searchResult.SetParent(m_searchbar);
 
         rcCombo = rcButton0;
         rcCombo.left += rcSearcResult.Width() + 4;
 
         // create search bar combo
-        DWORD dwComboStyle = WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_VSCROLL | CBS_DROPDOWN | CBS_AUTOHSCROLL;
+        uint32_t dwComboStyle = WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_VSCROLL | CBS_DROPDOWN | CBS_AUTOHSCROLL;
 
         m_cb.Create(m_hWnd, rcCombo, NULL, dwComboStyle);
-        m_cb.SetParent(hWndToolBar);
+        m_cb.SetParent(m_searchbar);
 
-        // set 25 lines visible in combo list
-        m_cb.GetComboCtrl().ResizeClient(rcCombo.Width(), rcCombo.Height() + 25 * m_cb.GetItemHeight(0));
+        // set visible lines count in combo list
+        m_cb.GetComboCtrl().ResizeClient(rcCombo.Width(), rcCombo.Height() + 35 * m_cb.GetItemHeight(0));
         m_searchbox = m_cb.GetComboCtrl();
         m_searchedit = m_cb.GetEditCtrl();
+
         oldEditProc = (WNDPROC)m_searchedit.SetWindowLongPtr(GWLP_WNDPROC, (LONG_PTR)subEditProc);
         searchInfo.hwndEdit = m_searchedit;
 
-        //LoadSearchList();
+        //// The combobox might not be centred vertically, and we won't know the
+        //CRect rectSearchbar;
+        //CRect rectCombo;
+        //m_searchbar.GetClientRect(&rectSearchbar);
+        //m_cb.GetWindowRect(rectCombo);
 
-        //m_searchedit.SetCueBannerText(L"Search...");
-
-        // The combobox might not be centred vertically, and we won't know the
-        // height until it has been created.  Get the size now and see if it
-        // needs to be moved.
-        CRect rectToolBar;
-        CRect rectCombo;
-        m_searchbar.GetClientRect(&rectToolBar);
-        m_cb.GetWindowRect(rectCombo);
-
-        // Get the different between the heights of the toolbar and
-        // the combobox
-        int nDiff = rectToolBar.Height() - rectCombo.Height();
-        // If there is a difference, then move the combobox
-        if (nDiff > 1)
-        {
-            m_searchbar.ScreenToClient(&rectCombo);
-            m_cb.MoveWindow(rectCombo.left, rectCombo.top + (nDiff / 2), rectCombo.Width(), rectCombo.Height());
-        }
-        ////////////////  
+        //// Get the different between the heights of the toolbar and the combobox
+        //int nDiff = rectSearchbar.Height() - rectCombo.Height();
+        //if (nDiff > 1)
+        //{
+        //    m_searchbar.ScreenToClient(&rectCombo);
+        //    m_cb.MoveWindow(rectCombo.left, rectCombo.top + 1, rectCombo.Width(), rectCombo.Height());
+        //}
     }
+    AddSimpleReBarBand(m_searchbar, NULL, FALSE, 0, FALSE);
+    UIAddToolBar(m_searchbar);
+    SizeSimpleReBarBands();
 
+    m_mainToolbar = CreateSimpleToolBarCtrl(m_hWnd, IDR_TOOLBAR2, FALSE, ATL_SIMPLE_TOOLBAR_PANE_STYLE);
+    AddSimpleReBarBand(m_mainToolbar, NULL, FALSE, 0, FALSE);
+    UIAddToolBar(m_mainToolbar);
     SizeSimpleReBarBands();
 
     CreateSimpleStatusBar();
+    SizeSimpleReBarBands();
 #ifdef _STATUS_BAR_PARTS    
     int status_parts[] = { 200, 400, 600, -1 };
     ::SendMessage(m_hWndStatusBar, SB_SETPARTS, _countof(status_parts), (LPARAM)&status_parts);
 #endif
     m_hWndClient = m_view.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, WS_EX_CLIENTEDGE);
 
-    UIAddToolBar(hWndToolBar);
     UISetCheck(ID_VIEW_TOOLBAR, 1);
     UISetCheck(ID_VIEW_STATUS_BAR, 1);
 

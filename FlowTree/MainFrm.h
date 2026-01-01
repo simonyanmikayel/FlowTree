@@ -177,6 +177,7 @@ private:
 	//Search support
 	void SearchNavigate(WORD wID);
 	CToolBarCtrl m_searchbar;
+	CToolBarCtrl m_mainToolbar;
 	CComboBoxEx m_cb;
 	CEdit             m_searchResult;
 	CComboBox           m_searchbox;

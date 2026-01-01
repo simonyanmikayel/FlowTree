@@ -34,6 +34,7 @@ CSettings::CSettings() :
 	, m_ShowElapsedTime(this, _T("ShowElapsedTime"), FALSE)
 	, m_FullSrcPath(this, _T("FullSrcPath"), FALSE)
 	, m_FullFnName(this, _T("FullFnName"), FALSE)
+	, m_LogOnlyTraces(this, _T("LogOnlyTraces"), FALSE)
 	, m_DissableBufferization(this, _T("DissableBufferization"), FALSE)
 	, m_UseTcpForLog(this, _T("UseTcpForLog"), FALSE)
 	, m_IdeType(this, _T("IdeType"), 0)

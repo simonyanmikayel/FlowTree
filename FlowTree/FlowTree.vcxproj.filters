@@ -79,6 +79,9 @@
     <Image Include="res\Toolbar.bmp">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="res\Toolbar_2.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
     <Image Include="res\ttf_glyph.bmp">
       <Filter>Resource Files</Filter>
     </Image>

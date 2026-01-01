@@ -249,6 +249,7 @@ public:
     PROP_NUM(DWORD, ShowElapsedTime);
 	PROP_NUM(DWORD, FullSrcPath);
 	PROP_NUM(DWORD, FullFnName);
+	PROP_NUM(DWORD, LogOnlyTraces);
 	PROP_NUM(DWORD, DissableBufferization);
 	PROP_NUM(DWORD, UseTcpForLog);
 	PROP_NUM(DWORD, IdeType);

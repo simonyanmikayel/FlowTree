@@ -483,7 +483,7 @@ namespace Helpers
     void UpdateDbgLoadStatus() 
     {
         static CHAR pBuf[1024];
-        _sntprintf_s(pBuf, _countof(pBuf) - 1, _countof(pBuf) -1, TEXT("Loading module %d/%d %d %d"), gDbgLoadStatus.cModulesTotal, gDbgLoadStatus.cModulesLoading, gDbgLoadStatus.cFunctionsLoaded, gDbgLoadStatus.cSettingsChecked);
+        _sntprintf_s(pBuf, _countof(pBuf) - 1, _countof(pBuf) -1, TEXT("Loading: %s %d/%d %d %d"), gDbgLoadStatus.szCurrentModule, gDbgLoadStatus.cModulesTotal, gDbgLoadStatus.cModulesLoading, gDbgLoadStatus.cFunctionsLoaded, gDbgLoadStatus.cSettingsChecked);
         pBuf[_countof(pBuf) - 1] = 0;
         gMainFrame->UpdateStatusBar(pBuf);
     }

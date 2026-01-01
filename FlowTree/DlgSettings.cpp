@@ -14,6 +14,7 @@ LRESULT DlgSettings::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPa
   m_btnReset.Attach(GetDlgItem(IDC_BUTTON_RESET));
   m_FullSrcPath.Attach(GetDlgItem(IDC_CHECK_FULL_SRC_PATH));
   m_FullFnName.Attach(GetDlgItem(IDC_CHECK_FULL_FN_NAME));
+  m_LogOnlyTraces.Attach(GetDlgItem(IDC_CHECK_LOG_ONLY_TRACES));
   m_DissableBufferization.Attach(GetDlgItem(IDC_CHECK_FULL_DISSABLE_BUFFERIZATION));
   m_UseTcpForLog.Attach(GetDlgItem(IDC_CHECK_USETCPFORLOG));
   //m_IdeType.Attach(GetDlgItem(IDC_RADIO_VS));
@@ -28,6 +29,7 @@ LRESULT DlgSettings::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPa
 
   m_FullSrcPath.SetCheck(gSettings.FullSrcPath() ? BST_CHECKED : BST_UNCHECKED);
   m_FullFnName.SetCheck(gSettings.FullFnName() ? BST_CHECKED : BST_UNCHECKED);
+  m_LogOnlyTraces.SetCheck(gSettings.LogOnlyTraces() ? BST_CHECKED : BST_UNCHECKED);
   m_DissableBufferization.SetCheck(gSettings.DissableBufferization() ? BST_CHECKED : BST_UNCHECKED);
   m_UseTcpForLog.SetCheck(gSettings.UseTcpForLog() ? BST_CHECKED : BST_UNCHECKED);
   CheckRadioButton(IDC_RADIO_VS, IDC_RADIO_CLION, IDC_RADIO_VS + gSettings.IdeType());
@@ -94,6 +96,7 @@ LRESULT DlgSettings::OnCloseCmd(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/
     gSettings.SetUIFont(m_FaceName, m_lfWeight, m_FontSize);
     gSettings.FullSrcPath(m_FullSrcPath.GetCheck());
 	gSettings.FullFnName(m_FullFnName.GetCheck());
+    gSettings.LogOnlyTraces(m_LogOnlyTraces.GetCheck());
     gSettings.DissableBufferization(m_DissableBufferization.GetCheck());
     gSettings.UseTcpForLog(m_UseTcpForLog.GetCheck());
     //int ideType = m_IdeType.GetCheck();

@@ -241,6 +241,7 @@
     <Image Include="res\sync1.bmp" />
     <Image Include="res\sync2.bmp" />
     <Image Include="res\Toolbar.bmp" />
+    <Image Include="res\Toolbar_2.bmp" />
     <Image Include="res\tree_node_checked.ico" />
     <Image Include="res\tree_node_colapsed.ico" />
     <Image Include="res\tree_node_expanded.ico" />
